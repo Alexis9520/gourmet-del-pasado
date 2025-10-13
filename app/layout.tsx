@@ -22,7 +22,7 @@ const lato = Lato({
 })
 
 export const metadata: Metadata = {
-  title: "Comanda Pro - Sistema de Gestión de Restaurantes",
+  title: "Quantify Gourmet - Sistema de Gestión de Restaurantes",
   description: "Sistema POS profesional para restaurantes",
   generator: "v0.app",
 }
