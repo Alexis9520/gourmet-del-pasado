@@ -240,7 +240,6 @@ export default function LoginPage() {
               Quantify Gourmet
             </span>
             <span className="font-modern text-base font-medium text-white/80">
-              Restaurante de Jampi y sus Amigos
             </span>
           </div>
         </div>
