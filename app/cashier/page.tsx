@@ -2,89 +2,101 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { motion, AnimatePresence } from "framer-motion"
 import { usePOSStore } from "@/lib/store"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
-import { Clock, User } from "lucide-react"
+import { Clock, User, Printer, CreditCard, ReceiptText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PaymentModal } from "@/components/payment-modal"
+import { cn } from "@/lib/utils"
 
 const PrintStyles = () => (
   <style jsx global>{`
     @media screen {
       .visually-hidden {
-        position: absolute;
+        position: absolute !important;
         left: -9999px;
-        top: -9999px;
+        top: auto;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
       }
     }
     @media print {
-      /* Hide everything on the page by default */
       body * {
         visibility: hidden;
       }
-
-      /* Make the printable ticket container and its children visible */
-      .printable-ticket-container, .printable-ticket-container * {
+      .printable-container, .printable-container * {
         visibility: visible;
       }
-
-      /* Position the ticket at the top of the print page */
-      .printable-ticket-container {
+      .printable-container {
         position: absolute;
         left: 0;
         top: 0;
         width: 100%;
-        font-family: 'Courier New', Courier, monospace;
+      }
+      
+      /* ✅ INICIO DE ESTILOS PARA TICKET DE 80mm */
+      .ticket {
+        width: 280px; /* Ancho estándar para papel térmico de 80mm */
+        margin: 0;
+        padding: 5px;
+        font-family: 'Courier New', Courier, monospace; /* Fuente monoespaciada */
         font-size: 10pt;
         color: #000;
-      }
-
-      .ticket {
-        width: 280px; /* Standard thermal receipt paper width (80mm) */
-        margin: 0 auto;
-        padding: 5px;
+        background-color: #fff; /* Fondo blanco para impresión */
       }
 
       .ticket .header, .ticket .footer {
         text-align: center;
       }
-
-      .ticket h2 {
-        margin: 0;
-        font-size: 14pt;
-        font-weight: bold;
-      }
-
+      
       .ticket p {
         margin: 4px 0;
       }
 
-      .ticket .info, .ticket .total {
+      .ticket .info {
         margin: 10px 0;
       }
-      
-      .ticket .items table {
-        width: 100%;
-        border-collapse: collapse;
+
+      /* Estilos para la nueva lista de items con Flexbox */
+      .ticket .items .item-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 3px 0;
+      }
+      .ticket .items .header-row {
+        font-weight: bold;
+        border-bottom: 1px dashed #000;
+        padding-bottom: 3px;
+        margin-bottom: 3px;
       }
 
-      .ticket .items th, .ticket .items td {
-        padding: 3px 0;
+      .ticket .item-qty {
+        width: 3ch; /* Ancho para 'Cant' (3 caracteres) */
+        text-align: left;
+        flex-shrink: 0;
+      }
+      .ticket .item-name {
+        flex-grow: 1; /* El nombre del producto ocupa el espacio restante */
+        margin: 0 8px;
+        text-align: left;
+      }
+      .ticket .item-total {
+        text-align: right;
+        flex-shrink: 0;
       }
 
-      /* Align table columns */
-      .ticket .items th:nth-child(1), .ticket .items td:nth-child(1) { text-align: left; width: 15%; } /* Cant. */
-      .ticket .items th:nth-child(2), .ticket .items td:nth-child(2) { text-align: left; } /* Descripcion */
-      .ticket .items th:nth-child(3), .ticket .items td:nth-child(3) { text-align: right; width: 30%; } /* Total */
-
-      .ticket .total .total-row {
+      /* Estilos para la fila del TOTAL */
+      .ticket .total-row {
         display: flex;
         justify-content: space-between;
         font-size: 12pt;
         font-weight: bold;
         margin-top: 5px;
       }
+      /* ✅ FIN DE ESTILOS PARA TICKET */
     }
   `}</style>
 );
@@ -98,49 +110,52 @@ const PrintableTicket = ({ selectedTableId }: { selectedTableId: string | null }
   }
 
   return (
-    <div className="printable-ticket-container visually-hidden">
+    <div className="printable-container visually-hidden">
+      {/* ✅ Este div 'ticket' será nuestro contenedor con ancho fijo */}
       <div className="ticket">
         <div className="header">
-          <h2 className="font-bold text-lg">Mi Restaurante</h2>
+          <h2 style={{ fontWeight: 'bold', fontSize: '16pt', margin: 0 }}>Mi Restaurante</h2>
           <p>Av. Principal 123, Lima</p>
           <p>RUC: 20123456789</p>
           <p>--------------------------------</p>
-          <p className="font-bold text-xl">PRE-CUENTA</p>
+          <p style={{ fontWeight: 'bold', fontSize: '14pt' }}>PRE-CUENTA</p>
           <p>--------------------------------</p>
         </div>
+
         <div className="info">
           <p><strong>Mesa:</strong> {table.number}</p>
           <p><strong>Mesero:</strong> {table.waiter}</p>
           <p><strong>Fecha:</strong> {new Date().toLocaleDateString("es-PE")}</p>
           <p><strong>Hora:</strong> {new Date().toLocaleTimeString("es-PE", { hour: '2-digit', minute: '2-digit' })}</p>
         </div>
+
+        <p>--------------------------------</p>
+
+        {/* ✅ Estructura de items refactorizada SIN <table> */}
         <div className="items">
-          <table>
-            <thead>
-              <tr>
-                <th>Cant.</th>
-                <th>Descripción</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              {table.orders.map((order) => (
-                <tr key={order.id}>
-                  <td>{order.quantity}</td>
-                  <td>{order.name}</td>
-                  <td>S/ {(order.price * order.quantity).toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="item-row header-row">
+            <span className="item-qty">Cant</span>
+            <span className="item-name">Descripción</span>
+            <span className="item-total">Total</span>
+          </div>
+          {table.orders.map((order) => (
+            <div key={order.id} className="item-row">
+              <span className="item-qty">{order.quantity}</span>
+              <span className="item-name">{order.name}</span>
+              <span className="item-total">S/{(order.price * order.quantity).toFixed(2)}</span>
+            </div>
+          ))}
         </div>
+
+        <p>--------------------------------</p>
+
         <div className="total">
-          <p>--------------------------------</p>
           <div className="total-row">
             <span><strong>TOTAL:</strong></span>
             <span><strong>S/ {table.total.toFixed(2)}</strong></span>
           </div>
         </div>
+
         <div className="footer">
           <p>--------------------------------</p>
           <p>Gracias por su visita</p>
@@ -155,7 +170,7 @@ const PrintableTicket = ({ selectedTableId }: { selectedTableId: string | null }
 
 export default function CashierPage() {
   const router = useRouter()
-  const { currentUser, tables } = usePOSStore()
+  const { currentUser, tables, requestPayment } = usePOSStore()
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
 
@@ -167,8 +182,20 @@ export default function CashierPage() {
 
   if (!currentUser) return null
 
-  const occupiedTables = tables.filter((t) => t.status === "ocupado")
+  const accountsToSettle = tables.filter(
+    (t) => t.status === "ocupado" || t.status === "pago pendiente"
+  );
   const selectedTable = tables.find((t) => t.id === selectedTableId)
+
+  const handlePrintPreTicket = () => {
+    if (!selectedTableId) return;
+
+    // Cambia el estado de la mesa a 'pago pendiente'
+    requestPayment(selectedTableId);
+
+    // Llama a la función de impresión
+    window.print();
+  };
 
   const getElapsedTime = (startTime?: Date) => {
     if (!startTime) return ""
@@ -181,127 +208,154 @@ export default function CashierPage() {
 
   const handleClosePaymentModal = () => {
     setIsPaymentModalOpen(false)
-    setSelectedTableId(null)
+    setSelectedTableId(null) // ✅ Esto limpia la selección y la vista de detalles.
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="flex h-screen bg-[#FFF5ED]"> {/* Fondo: Crema de Fondo */}
       <PrintStyles />
-      <PrintableTicket selectedTableId={selectedTableId} />
-      <Sidebar className="no-print"/>
+      <PrintableTicket selectedTableId={!isPaymentModalOpen ? selectedTableId : null} />
+      <Sidebar />
 
       <div className="flex flex-1 flex-col">
-        <Header className="no-print"/>
+        <Header />
 
         <main className="flex flex-1 overflow-hidden">
-          {/* Left side - Open accounts list */}
-          <div className="no-print w-96 border-r border-border bg-card">
-            <div className="border-b border-border p-4">
-              <h2 className="font-display text-xl font-bold text-foreground">Cuentas Abiertas</h2>
-              <p className="text-sm text-muted-foreground">{occupiedTables.length} mesas ocupadas</p>
+          {/* ✅ Lado Izquierdo - Lista de cuentas rediseñada */}
+          <aside className="w-96 flex-shrink-0 border-r border-[#FFE0C2] bg-[#FFF3E5]"> {/* Fondo: Crema Suave */}
+            <div className="border-b border-[#FFE0C2] p-4">
+              <h2 className="text-xl font-bold text-[#A65F33]">Cuentas Abiertas</h2>
+              <p className="text-sm text-[#A65F33]/70">{accountsToSettle.length} mesas ocupadas</p>
             </div>
 
-            <div className="overflow-auto p-4">
-              {occupiedTables.length === 0 ? (
-                <div className="flex h-64 items-center justify-center text-center text-sm text-muted-foreground">
-                  No hay cuentas abiertas
+            <div className="h-[calc(100vh-8rem)] overflow-auto p-3">
+              {accountsToSettle.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-center text-sm text-[#A65F33]/60">
+                  <span>No hay cuentas abiertas</span>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {occupiedTables.map((table) => (
-                    <button
+                <div className="relative space-y-2">
+                  {accountsToSettle.map((table) => (
+                    <motion.button
                       key={table.id}
                       onClick={() => setSelectedTableId(table.id)}
-                      className={`w-full rounded-lg border p-4 text-left transition-colors ${
-                        selectedTableId === table.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border bg-card hover:bg-accent"
-                      }`}
+                      whileHover={{ y: -2 }}
+                      className="relative w-full rounded-lg p-4 text-left transition-shadow duration-300 hover:shadow-lg hover:shadow-orange-200/50"
                     >
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="font-display text-lg font-bold text-foreground">Mesa {table.number}</span>
-                        <span className="font-display text-xl font-bold text-primary">S/ {table.total.toFixed(2)}</span>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          <span>{table.waiter}</span>
+                      {/* Animación de highlight que se desliza */}
+                      {selectedTableId === table.id && (
+                        <motion.div
+                          layoutId="highlight"
+                          className="absolute inset-0 rounded-lg bg-white shadow-md"
+                          transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                        />
+                      )}
+
+                      <div className="relative z-10">
+                        <div className="mb-2 flex items-center justify-between">
+                          <span className="text-lg font-bold text-[#A65F33]">Mesa {table.number}</span>
+                          <span className={cn("text-xl font-bold", selectedTableId === table.id ? "text-[#FFA142]" : "text-[#A65F33]")}>
+                            S/ {table.total.toFixed(2)}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{getElapsedTime(table.startTime)}</span>
+                        <div className="flex items-center gap-4 text-xs text-[#A65F33]/70">
+                          <div className="flex items-center gap-1.5"><User size={14} />{table.waiter}</div>
+                          <div className="flex items-center gap-1.5"><Clock size={14} />{getElapsedTime(table.startTime)}</div>
                         </div>
+                        {table.status === 'pago pendiente' && (
+                          <span className="rounded-full bg-yellow-500 px-2 py-0.5 text-xs font-bold text-white">
+                            PAGO
+                          </span>
+                        )}
                       </div>
-                    </button>
+                    </motion.button>
                   ))}
                 </div>
               )}
             </div>
-          </div>
+          </aside>
 
-          {/* Right side - Account details */}
-          <div className="flex-1 overflow-auto p-6">
-            {selectedTable ? (
-              <div id="printable-area" className="mx-auto max-w-2xl">
-                <div className="mb-6">
-                  <h2 className="font-display text-2xl font-bold text-foreground">Detalle de Cuenta</h2>
-                  <p className="text-sm text-muted-foreground">Mesa {selectedTable.number}</p>
-                </div>
-
-                <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
-                  <div className="mb-4 flex items-center justify-between border-b border-border pb-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Mesero</p>
-                      <p className="font-semibold text-foreground">{selectedTable.waiter}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground">Tiempo</p>
-                      <p className="font-semibold text-foreground">{getElapsedTime(selectedTable.startTime)}</p>
-                    </div>
+          {/* ✅ Lado Derecho - Detalle de cuenta rediseñado */}
+          <section className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+            <AnimatePresence mode="wait">
+              {selectedTable ? (
+                <motion.div
+                  key={selectedTable.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="mx-auto max-w-xl"
+                >
+                  <div className="mb-4">
+                    <h2 className="text-2xl font-bold text-[#A65F33]">Detalle de Cuenta: Mesa {selectedTable.number}</h2>
+                    <p className="text-sm text-[#A65F33]/70">Revisa los productos antes de procesar el pago.</p>
                   </div>
 
-                  <div className="space-y-3">
-                    {selectedTable.orders.map((order) => (
-                      <div key={order.id} className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <p className="font-semibold text-foreground">
-                            <span className="text-primary">x{order.quantity}</span> {order.name}
-                          </p>
-                          {order.notes && <p className="text-xs text-muted-foreground">Nota: {order.notes}</p>}
+                  <div className="overflow-hidden rounded-lg border border-[#FFE0C2] bg-white shadow-sm">
+                    {/* Detalles del mesero y tiempo */}
+                    <div className="flex justify-between border-b border-[#FFE0C2] bg-[#FFF3E5]/50 p-4 text-sm">
+                      <div className="flex items-center gap-2"><User size={16} className="text-[#A65F33]/70" /> <span className="font-semibold text-[#A65F33]">{selectedTable.waiter}</span></div>
+                      <div className="flex items-center gap-2"><Clock size={16} className="text-[#A65F33]/70" /> <span className="font-semibold text-[#A65F33]">{getElapsedTime(selectedTable.startTime)}</span></div>
+                    </div>
+
+                    {/* Lista de productos */}
+                    <div className="space-y-3 p-6">
+                      {selectedTable.orders.map((order) => (
+                        <div key={order.id} className="grid grid-cols-12 gap-2 text-[#A65F33]">
+                          <div className="col-span-1 font-semibold">x{order.quantity}</div>
+                          <div className="col-span-8">
+                            <p className="font-semibold">{order.name}</p>
+                            {order.notes && <p className="text-xs text-[#A65F33]/60 italic">Nota: {order.notes}</p>}
+                          </div>
+                          <div className="col-span-3 text-right font-semibold">S/ {(order.price * order.quantity).toFixed(2)}</div>
                         </div>
-                        <p className="font-semibold text-foreground">S/ {(order.price * order.quantity).toFixed(2)}</p>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
 
-                  <div className="mt-6 border-t border-border pt-4">
-                    <div className="flex items-center justify-between">
-                      <span className="font-display text-xl font-bold text-foreground">Total</span>
-                      <span className="font-display text-3xl font-bold text-primary">
-                        S/ {selectedTable.total.toFixed(2)}
-                      </span>
+                    {/* Total y botones */}
+                    <div className="bg-[#FFA142] p-6 text-white">
+                      <div className="flex items-center justify-between">
+                        <span className="text-2xl font-bold">Total a Pagar</span>
+                        <span className="text-4xl font-bold">S/ {selectedTable.total.toFixed(2)}</span>
+                      </div>
+                      <div className="mt-6 flex gap-3">
+                        {/* ✅ 3. Usa la nueva función en el botón */}
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-white/50 bg-transparent text-white hover:bg-white/10"
+                          onClick={handlePrintPreTicket}
+                          // Opcional: Deshabilita el botón si ya está en pago pendiente
+                          disabled={selectedTable?.status === 'pago pendiente'}
+                        >
+                          <Printer className="mr-2 h-4 w-4" />
+                          {selectedTable?.status === 'pago pendiente' ? 'Pre-Cuenta Impresa' : 'Imprimir Pre-Cuenta'}
+                        </Button>
+
+                        <Button className="flex-1 bg-white text-[#A65F33] shadow-lg hover:bg-gray-100" onClick={() => setIsPaymentModalOpen(true)}>
+                          <CreditCard className="mr-2 h-4 w-4" /> Registrar Pago
+                        </Button>
+                      </div>
                     </div>
                   </div>
-
-                  <div className="mt-6 flex gap-3 no-print">
-                    <Button variant="outline" className="flex-1 bg-transparent" onClick={() => window.print()}>
-                      Imprimir Pre-Cuenta
-                    </Button>
-                    <Button className="flex-1" onClick={() => setIsPaymentModalOpen(true)}>
-                      Registrar Pago
-                    </Button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="empty-state"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="flex h-full flex-col items-center justify-center text-center"
+                >
+                  <div className="flex h-24 w-24 items-center justify-center rounded-full bg-[#FFF3E5]">
+                    <ReceiptText size={60} className="text-[#FFA142]" />
                   </div>
-                </div>
-              </div>
-            ) : (
-              <div className="no-print flex h-full items-center justify-center text-center">
-                <div>
-                  <div className="mb-4 text-6xl">💳</div>
-                  <p className="text-lg text-muted-foreground">Seleccione una cuenta para ver los detalles</p>
-                </div>
-              </div>
-            )}
-          </div>
+                  <p className="mt-4 text-lg font-bold text-[#A65F33]">Selecciona una cuenta</p>
+                  <p className="max-w-xs text-[#A65F33]/70">Elige una de las cuentas abiertas en la lista de la izquierda para ver su detalle y procesar el pago.</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </section>
         </main>
       </div>
 

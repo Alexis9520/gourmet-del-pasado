@@ -1,6 +1,8 @@
 import { create } from "zustand"
 
-export type TableStatus = "libre" | "ocupado" | "reservado"
+export type TableStatus = "libre" | "ocupado" | "reservado" | "pago pendiente";
+export type OrderItemStatus = "pendiente" | "en preparación" | "listo" | "servido" | "cancelado";
+
 
 export interface MenuItem {
   id: string
@@ -26,6 +28,7 @@ export interface OrderItem {
   quantity: number
   price: number
   notes?: string
+  status: OrderItemStatus
 }
 
 export interface Table {
@@ -68,23 +71,26 @@ interface POSState {
   kitchenTickets: KitchenTicket[]
   orderHistory: CompletedOrder[]
   notifications: Notification[]
-  
+
 
   // Actions...
   login: (user: { name: string; role: "admin" | "waiter" | "cashier" | "kitchen" }) => void
   logout: () => void
   updateTableNotes: (tableId: string, notes: string) => void
   updateTableStatus: (tableId: string, status: TableStatus) => void
-  addOrderToTable: (tableId: string, orders: OrderItem[]) => void
+  addOrderToTable: (tableId: string, newItems: Omit<OrderItem, "id" | "status">[]) => void
   sendToKitchen: (tableId: string) => void
   markTicketReady: (ticketId: string) => void
-  processPayment: (tableId: string, method: string) => void
+  processPayment: (tableId: string, method: string) => CompletedOrder | null
+  updateOrderItemStatus: (tableId: string, orderItemId: string, status: OrderItemStatus) => void
   toggleMenuItemAvailability: (itemId: string) => void
   addMenuItem: (item: Omit<MenuItem, "id">) => void
   updateMenuItem: (id: string, item: Partial<MenuItem>) => void
   deleteMenuItem: (id: string) => void
   addNotification: (notification: Omit<Notification, "id" | "timestamp">) => void
   removeNotification: (id: string) => void
+  clearAllNotifications: () => void
+  requestPayment: (tableId: string) => void;
 }
 
 // Mock data
@@ -105,20 +111,20 @@ const mockMenuItems: MenuItem[] = [
 // Disposición y estado de mesas en el local (adapta x/y/seats según tu plano real)
 const mockTables: Table[] = [
   { id: "table-1", number: 1, status: "libre", orders: [], total: 0, x: 40, y: 70, seats: 4 },
-  { id: "table-2", number: 2, status: "ocupado", orders: [], total: 0, x: 180, y: 70, seats: 4 },
+  { id: "table-2", number: 2, status: "libre", orders: [], total: 0, x: 180, y: 70, seats: 4 },
   { id: "table-3", number: 3, status: "libre", orders: [], total: 0, x: 40, y: 200, seats: 6 },
   { id: "table-4", number: 4, status: "reservado", orders: [], total: 0, x: 180, y: 200, seats: 6, reservedTime: "19:30" },
-  { id: "table-5", number: 5, status: "ocupado", orders: [], total: 0, x: 320, y: 70, seats: 4 },
+  { id: "table-5", number: 5, status: "libre", orders: [], total: 0, x: 320, y: 70, seats: 4 },
   { id: "table-6", number: 6, status: "reservado", orders: [], total: 0, x: 320, y: 200, seats: 4, reservedTime: "18:15" },
   { id: "table-7", number: 7, status: "libre", orders: [], total: 0, x: 40, y: 320, seats: 4 },
   { id: "table-8", number: 8, status: "libre", orders: [], total: 0, x: 180, y: 320, seats: 4 },
-  { id: "table-9", number: 9, status: "ocupado", orders: [], total: 0, x: 320, y: 320, seats: 4 },
+  { id: "table-9", number: 9, status: "libre", orders: [], total: 0, x: 320, y: 320, seats: 4 },
   { id: "table-10", number: 10, status: "libre", orders: [], total: 0, x: 440, y: 70, seats: 4 },
   { id: "table-11", number: 11, status: "libre", orders: [], total: 0, x: 440, y: 200, seats: 4 },
   { id: "table-12", number: 12, status: "libre", orders: [], total: 0, x: 440, y: 320, seats: 4 },
 ]
 
-export const usePOSStore = create<POSState>((set) => ({
+export const usePOSStore = create<POSState>((set, get) => ({
   currentUser: null,
   tables: mockTables,
   menuItems: mockMenuItems,
@@ -139,75 +145,119 @@ export const usePOSStore = create<POSState>((set) => ({
       tables: state.tables.map((table) => (table.id === tableId ? { ...table, status } : table)),
     })),
 
-  processPayment: (tableId, method) =>
-    set((state) => {
-      const tableToProcess = state.tables.find((table) => table.id === tableId);
+  processPayment: (tableId, method) => {
+    const state = get(); // Obtenemos el estado actual
+    const tableToProcess = state.tables.find((table) => table.id === tableId);
 
-      // Si no encontramos la mesa o no tiene items, no hacemos nada
-      if (!tableToProcess || tableToProcess.orders.length === 0) {
-        return state;
-      }
+    if (!tableToProcess || tableToProcess.orders.length === 0) {
+      return null; // Si no hay nada que procesar, devolvemos null
+    }
 
-      // 1. Crear el registro para el historial
-      const newCompletedOrder: CompletedOrder = {
-        id: `completed-${Date.now()}`,
-        tableNumber: tableToProcess.number,
-        waiter: tableToProcess.waiter,
-        items: [...tableToProcess.orders], // Copiamos los items
-        total: tableToProcess.total,
-        paymentMethod: method,
-        completionTime: new Date(),
-      };
+    // 1. Crear el registro para el historial
+    const newCompletedOrder: CompletedOrder = {
+      id: `comp-${Date.now()}`,
+      tableNumber: tableToProcess.number,
+      waiter: tableToProcess.waiter,
+      items: [...tableToProcess.orders],
+      total: tableToProcess.total,
+      paymentMethod: method,
+      completionTime: new Date(),
+    };
 
-      // 2. Actualizar el estado
-      return {
-        // Añadimos el nuevo pedido completado al historial
-        orderHistory: [newCompletedOrder, ...state.orderHistory],
+    // 2. Actualizar el estado del store (como antes)
+    set({
+      orderHistory: [newCompletedOrder, ...state.orderHistory],
+      tables: state.tables.map((table) =>
+        table.id === tableId
+          ? {
+            ...table,
+            status: "libre",
+            orders: [],
+            total: 0,
+            startTime: undefined,
+            waiter: undefined,
+            notes: undefined,
+          }
+          : table
+      ),
+    });
 
-        // Limpiamos la mesa como antes
-        tables: state.tables.map((table) =>
-          table.id === tableId
-            ? {
-                ...table,
-                status: "libre",
-                orders: [],
-                total: 0,
-                startTime: undefined,
-                waiter: undefined,
-                notes: undefined,
-              }
-            : table
-        ),
-      };
-    }),
-  addOrderToTable: (tableId, orders) =>
+    // ✅ 3. Devolvemos el objeto del pedido completado
+    return newCompletedOrder;
+  },
+  requestPayment: (tableId) =>
     set((state) => ({
-      tables: state.tables.map((table) => {
+      tables: state.tables.map((table) =>
+        table.id === tableId ? { ...table, status: "pago pendiente" } : table
+      ),
+    })),
+  addOrderToTable: (tableId, newItems) =>
+    set((state) => {
+      const updatedTables = state.tables.map((table) => {
         if (table.id === tableId) {
-          const existingOrders = [...table.orders]
-          orders.forEach((newOrder) => {
-            const existingIndex = existingOrders.findIndex(
-              (o) => o.menuItemId === newOrder.menuItemId && o.notes === newOrder.notes,
-            )
-            if (existingIndex >= 0) {
-              existingOrders[existingIndex].quantity += newOrder.quantity
+          const updatedOrders = [...table.orders];
+
+          newItems.forEach((newItem) => {
+            // Buscamos si ya existe un item PENDIENTE con el mismo ID de menú y notas
+            const existingIndex = updatedOrders.findIndex(
+              (o) => o.menuItemId === newItem.menuItemId && o.notes === newItem.notes && o.status === 'pendiente'
+            );
+
+            if (existingIndex !== -1) {
+              // Si existe y está pendiente, solo aumentamos la cantidad
+              updatedOrders[existingIndex].quantity += newItem.quantity;
             } else {
-              existingOrders.push(newOrder)
+              // Si no existe (o ya no está pendiente), lo añadimos como un nuevo item
+              updatedOrders.push({
+                ...newItem,
+                id: `order-${Date.now()}-${Math.random()}`,
+                status: 'pendiente', // ✅ Todo nuevo item entra como 'pendiente'
+              });
             }
-          })
-          const total = existingOrders.reduce((sum, item) => sum + item.price * item.quantity, 0)
+          });
+
+          const newTotal = updatedOrders.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
           return {
             ...table,
-            orders: existingOrders,
-            total,
+            orders: updatedOrders,
+            total: newTotal,
             status: "ocupado" as TableStatus,
             startTime: table.startTime || new Date(),
-            waiter: state.currentUser?.name,
-          }
+            waiter: table.waiter || state.currentUser?.name,
+          };
         }
-        return table
-      }),
-    })),
+        return table;
+      });
+      return { tables: updatedTables };
+    }),
+  // ✅ ¡NUEVA FUNCIÓN ESENCIAL!
+  updateOrderItemStatus: (tableId, orderItemId, newStatus) =>
+    set((state) => {
+      const updatedTables = state.tables.map((table) => {
+        if (table.id === tableId) {
+          const updatedOrders = table.orders.map((order) => {
+            if (order.id === orderItemId) {
+              return { ...order, status: newStatus };
+            }
+            return order;
+          });
+
+          // Lógica de notificación cuando un plato está listo
+          if (newStatus === 'listo') {
+            const order = table.orders.find(o => o.id === orderItemId);
+            if (order) {
+              const notificationMessage = `${order.quantity}x ${order.name} (Mesa ${table.number}) está listo para servir.`;
+              // Llamamos a la acción de notificar de forma segura
+              Promise.resolve().then(() => get().addNotification({ message: notificationMessage, type: 'success' }));
+            }
+          }
+          return { ...table, orders: updatedOrders };
+        }
+        return table;
+      });
+      return { tables: updatedTables };
+    }),
   sendToKitchen: (tableId) =>
     set((state) => {
       const table = state.tables.find((t) => t.id === tableId)
@@ -281,4 +331,5 @@ export const usePOSStore = create<POSState>((set) => ({
     set((state) => ({
       notifications: state.notifications.filter((n) => n.id !== id),
     })),
+  clearAllNotifications: () => set({ notifications: [] }),
 }))

@@ -5,7 +5,7 @@ import { Lato } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Suspense } from "react"
-import { NotificationToast } from "@/components/notification-toast"
+import NotificationProvider from "@/components/NotificationProvider";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -35,9 +35,11 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${poppins.variable} ${lato.variable} antialiased`}>
+        
+
         <Suspense fallback={<div>Loading...</div>}>
           {children}
-          <NotificationToast />
+          <NotificationProvider />
           <Analytics />
         </Suspense>
       </body>
