@@ -2,6 +2,7 @@ import { create } from "zustand"
 
 export type TableStatus = "libre" | "ocupado" | "reservado" | "pago pendiente";
 export type OrderItemStatus = "pendiente" | "en preparación" | "listo" | "servido" | "cancelado";
+export type Site = "polleria" | "restaurante";
 
 
 export interface MenuItem {
@@ -11,6 +12,7 @@ export interface MenuItem {
   price: number
   image?: string
   available: boolean
+  site: Site
 }
 export interface CompletedOrder {
   id: string;
@@ -65,7 +67,7 @@ export interface Notification {
 }
 
 interface POSState {
-  currentUser: { name: string; role: "admin" | "waiter" | "cashier" | "kitchen" } | null
+  currentUser: { name: string; role: "admin" | "waiter" | "cashier" | "kitchen"; site: Site } | null
   tables: Table[]
   menuItems: MenuItem[]
   kitchenTickets: KitchenTicket[]
@@ -74,7 +76,7 @@ interface POSState {
 
 
   // Actions...
-  login: (user: { name: string; role: "admin" | "waiter" | "cashier" | "kitchen" }) => void
+  login: (user: { name: string; role: "admin" | "waiter" | "cashier" | "kitchen"; site: Site }) => void
   logout: () => void
   updateTableNotes: (tableId: string, notes: string) => void
   updateTableStatus: (tableId: string, status: TableStatus) => void
@@ -95,17 +97,33 @@ interface POSState {
 
 // Mock data
 const mockMenuItems: MenuItem[] = [
-  { id: "1", name: "Ceviche Clásico", category: "Entradas", price: 35, available: true },
-  { id: "2", name: "Causa Limeña", category: "Entradas", price: 28, available: true },
-  { id: "3", name: "Anticuchos", category: "Entradas", price: 32, available: true },
-  { id: "4", name: "Lomo Saltado", category: "Fondos", price: 45, available: true },
-  { id: "5", name: "Ají de Gallina", category: "Fondos", price: 38, available: true },
-  { id: "6", name: "Arroz con Mariscos", category: "Fondos", price: 48, available: true },
-  { id: "7", name: "Chicha Morada", category: "Bebidas", price: 8, available: true },
-  { id: "8", name: "Inca Kola", category: "Bebidas", price: 6, available: true },
-  { id: "9", name: "Pisco Sour", category: "Bebidas", price: 22, available: true },
-  { id: "10", name: "Suspiro Limeño", category: "Postres", price: 18, available: true },
-  { id: "11", name: "Mazamorra Morada", category: "Postres", price: 15, available: true },
+  // ===== RESTAURANTE =====
+  { id: "r1", name: "Ceviche Clásico", category: "Entradas", price: 35, available: true, site: "restaurante" },
+  { id: "r2", name: "Causa Limeña", category: "Entradas", price: 28, available: true, site: "restaurante" },
+  { id: "r3", name: "Tiradito de Pescado", category: "Entradas", price: 32, available: true, site: "restaurante" },
+  { id: "r4", name: "Lomo Saltado", category: "Fondos", price: 45, available: true, site: "restaurante" },
+  { id: "r5", name: "Ají de Gallina", category: "Fondos", price: 38, available: true, site: "restaurante" },
+  { id: "r6", name: "Arroz con Mariscos", category: "Fondos", price: 48, available: true, site: "restaurante" },
+  { id: "r7", name: "Seco de Cordero", category: "Fondos", price: 52, available: true, site: "restaurante" },
+  { id: "r8", name: "Chicha Morada", category: "Bebidas", price: 8, available: true, site: "restaurante" },
+  { id: "r9", name: "Pisco Sour", category: "Bebidas", price: 22, available: true, site: "restaurante" },
+  { id: "r10", name: "Maracuyá Sour", category: "Bebidas", price: 20, available: true, site: "restaurante" },
+  { id: "r11", name: "Suspiro Limeño", category: "Postres", price: 18, available: true, site: "restaurante" },
+  { id: "r12", name: "Mazamorra Morada", category: "Postres", price: 15, available: true, site: "restaurante" },
+  
+  // ===== POLLERÍA =====
+  { id: "p1", name: "Alitas Broaster", category: "Entradas", price: 18, available: true, site: "polleria" },
+  { id: "p2", name: "Anticuchos", category: "Entradas", price: 22, available: true, site: "polleria" },
+  { id: "p3", name: "Mollejitas", category: "Entradas", price: 20, available: true, site: "polleria" },
+  { id: "p4", name: "Pollo Entero", category: "Fondos", price: 55, available: true, site: "polleria" },
+  { id: "p5", name: "1/2 Pollo", category: "Fondos", price: 30, available: true, site: "polleria" },
+  { id: "p6", name: "1/4 Pollo", category: "Fondos", price: 18, available: true, site: "polleria" },
+  { id: "p7", name: "Salchipapa Personal", category: "Fondos", price: 15, available: true, site: "polleria" },
+  { id: "p8", name: "Salchipapa Familiar", category: "Fondos", price: 28, available: true, site: "polleria" },
+  { id: "p9", name: "Inca Kola 1.5L", category: "Bebidas", price: 8, available: true, site: "polleria" },
+  { id: "p10", name: "Chicha Morada Jarra", category: "Bebidas", price: 10, available: true, site: "polleria" },
+  { id: "p11", name: "Cerveza Pilsen", category: "Bebidas", price: 12, available: true, site: "polleria" },
+  { id: "p12", name: "Picarones", category: "Postres", price: 12, available: true, site: "polleria" },
 ]
 
 // Disposición y estado de mesas en el local (adapta x/y/seats según tu plano real)

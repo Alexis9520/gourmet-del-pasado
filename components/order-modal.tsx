@@ -28,8 +28,10 @@ const categories = [
 ]
 
 export function OrderModal({ table, onClose }: OrderModalProps) {
-  const { menuItems, addOrderToTable, updateTableNotes, addNotification, updateOrderItemStatus } = usePOSStore();
+  const { menuItems, addOrderToTable, updateTableNotes, addNotification, updateOrderItemStatus, currentUser } = usePOSStore();
   const [selectedCategory, setSelectedCategory] = useState("Entradas");
+  // ✨ Estado para la sede seleccionada (por defecto la del usuario)
+  const [selectedSite, setSelectedSite] = useState<"polleria" | "restaurante">(currentUser?.site || "restaurante");
 
   // ✨ Estado local SOLO para los NUEVOS items que se están añadiendo
   const [newItems, setNewItems] = useState<Omit<OrderItem, "id" | "status">[]>([]);
@@ -38,7 +40,10 @@ export function OrderModal({ table, onClose }: OrderModalProps) {
   const [noteText, setNoteText] = useState("");
   const [tableNote, setTableNote] = useState(table.notes || "");
 
-  const filteredMenuItems = menuItems.filter((item) => item.category === selectedCategory);
+  // ✨ Filtrar items por sede seleccionada Y categoría
+  const filteredMenuItems = menuItems.filter(
+    (item) => item.category === selectedCategory && item.site === selectedSite
+  );
 
 
   // Lógica para añadir items al estado local `newItems`
@@ -173,6 +178,32 @@ export function OrderModal({ table, onClose }: OrderModalProps) {
           {/* Asegúrate de que los botones de este lado llamen a addItem(item), que modifica `newItems` */}
           <div className="border-b border-[#FFE0C2] p-4">
             <h2 className="text-2xl font-bold text-[#A65F33]">Menú</h2> {/* Texto: Marrón Oscuro */}
+          </div>
+
+          {/* ✨ NUEVO: Tabs para cambiar entre Pollería y Restaurante */}
+          <div className="flex gap-2 border-b border-[#FFE0C2] px-4 py-2 bg-[#FFF3E5]">
+            <button
+              onClick={() => setSelectedSite("restaurante")}
+              className={cn(
+                "flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+                selectedSite === "restaurante"
+                  ? "bg-[#FFA142] text-white shadow-md"
+                  : "bg-white text-[#A65F33] hover:bg-[#FFE0C2]"
+              )}
+            >
+              🍽️ Restaurante
+            </button>
+            <button
+              onClick={() => setSelectedSite("polleria")}
+              className={cn(
+                "flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+                selectedSite === "polleria"
+                  ? "bg-[#FFA142] text-white shadow-md"
+                  : "bg-white text-[#A65F33] hover:bg-[#FFE0C2]"
+              )}
+            >
+              🍗 Pollería
+            </button>
           </div>
 
           {/* --- Pestañas de Categoría con la nueva paleta y microinteracciones --- */}

@@ -33,10 +33,12 @@ export default function LoginPage() {
   }, [currentUser, router]);
 
   const users = {
-    admin: { name: "Carlos Admin", role: "admin" as const },
-    mesero: { name: "Juan Mesero", role: "waiter" as const },
-    cajero: { name: "María Cajera", role: "cashier" as const },
-    cocina: { name: "Chef Pedro", role: "kitchen" as const },
+    admin: { name: "Carlos Admin", role: "admin" as const, site: "restaurante" as const },
+    mesero_restaurante: { name: "Juan Mesero (Rest.)", role: "waiter" as const, site: "restaurante" as const },
+    mesero_polleria: { name: "Pedro Mesero (Poll.)", role: "waiter" as const, site: "polleria" as const },
+    cajero: { name: "María Cajera", role: "cashier" as const, site: "restaurante" as const },
+    cocina_restaurante: { name: "Chef Carlos (Rest.)", role: "kitchen" as const, site: "restaurante" as const },
+    cocina_polleria: { name: "Chef Luis (Poll.)", role: "kitchen" as const, site: "polleria" as const },
   };
 
   const handleLogin = (e: React.FormEvent) => {
