@@ -59,7 +59,7 @@ export function HistoryTable({ orders, onRowClick }: HistoryTableProps) {
             <TableHead className="text-right text-[#A65F33] font-semibold">Total</TableHead>
           </TableRow>
         </TableHeader>
-        
+
         {/* ✅ CAMBIO 1: Usar motion.tbody directamente en lugar de <TableBody as={...}> */}
         <motion.tbody
           variants={containerVariants}

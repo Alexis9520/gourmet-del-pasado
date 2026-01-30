@@ -11,9 +11,10 @@ import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
 import { HistoryTable } from "@/components/HistoryTable";
 import { HistoryDetailModal } from "@/components/HistoryDetailModal";
+import { HistoryCards } from "@/components/HistoryCards";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon, History, TrendingUp, Hash, FileDown, ReceiptText } from "lucide-react";
+import { Calendar as CalendarIcon, History, TrendingUp, Hash, FileDown, ReceiptText, LayoutGrid, Table as TableIcon } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
@@ -39,10 +40,11 @@ const StatCard = ({ icon: Icon, title, value, subtext }: { icon: React.ElementTy
 export default function HistoryPage() {
   const router = useRouter();
   const { currentUser, orderHistory } = usePOSStore();
-  
+
   const [selectedOrder, setSelectedOrder] = useState<CompletedOrder | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
 
   useEffect(() => {
     if (!currentUser) router.push("/");
@@ -53,7 +55,7 @@ export default function HistoryPage() {
     return orderHistory.filter((order) => {
       const orderDate = new Date(order.completionTime);
       const isSameDay = selectedDate ? orderDate.toDateString() === selectedDate.toDateString() : true;
-      
+
       const searchMatch = searchTerm.toLowerCase() === '' ||
         order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.tableNumber.toString().includes(searchTerm) ||
@@ -101,12 +103,14 @@ export default function HistoryPage() {
               </div>
             </motion.div>
 
-            {/* Tarjetas de Estadísticas */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
-              <StatCard icon={TrendingUp} title="Ventas Totales" value={`S/ ${stats.totalSales.toFixed(2)}`} subtext="Ingresos del día" />
-              <StatCard icon={ReceiptText} title="Pedidos Completados" value={stats.totalOrders.toString()} subtext="Transacciones del día" />
-              <StatCard icon={Hash} title="Ticket Promedio" value={`S/ ${stats.averageTicket.toFixed(2)}`} subtext="Valor por pedido" />
-            </div>
+            {/* Tarjetas de Estadísticas (Solo visibles para no mozos) */}
+            {currentUser.role !== "waiter" && (
+              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-8">
+                <StatCard icon={TrendingUp} title="Ventas Totales" value={`S/ ${stats.totalSales.toFixed(2)}`} subtext="Ingresos del día" />
+                <StatCard icon={ReceiptText} title="Pedidos Completados" value={stats.totalOrders.toString()} subtext="Transacciones del día" />
+                <StatCard icon={Hash} title="Ticket Promedio" value={`S/ ${stats.averageTicket.toFixed(2)}`} subtext="Valor por pedido" />
+              </div>
+            )}
 
             {/* Controles de la Tabla */}
             <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }} className="flex flex-col md:flex-row gap-4 mb-6 p-4 bg-[#FFF3E5] border border-[#FFE0C2] rounded-xl">
@@ -130,11 +134,39 @@ export default function HistoryPage() {
               <Button className="w-full md:w-auto bg-[#A65F33] text-white hover:bg-[#A65F33]/90">
                 <FileDown className="mr-2 h-4 w-4" /> Exportar a CSV
               </Button>
+
+              {/* Toggle de Vista */}
+              <div className="flex bg-white rounded-lg border border-[#FFE0C2] p-1 h-10 w-full md:w-auto">
+                <button
+                  onClick={() => setViewMode("cards")}
+                  className={cn(
+                    "flex-1 md:w-10 flex items-center justify-center rounded-md transition-all",
+                    viewMode === "cards" ? "bg-[#FFA142] text-white shadow-sm" : "text-[#A65F33]/50 hover:bg-[#FFF5ED]"
+                  )}
+                  title="Vista de Tarjetas"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={cn(
+                    "flex-1 md:w-10 flex items-center justify-center rounded-md transition-all",
+                    viewMode === "table" ? "bg-[#FFA142] text-white shadow-sm" : "text-[#A65F33]/50 hover:bg-[#FFF5ED]"
+                  )}
+                  title="Vista de Tabla"
+                >
+                  <TableIcon className="h-4 w-4" />
+                </button>
+              </div>
             </motion.div>
 
-            {/* Contenedor de la tabla */}
+            {/* Contenedor de datos (Cards o Tabla) */}
             <motion.div variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}>
-              <HistoryTable orders={filteredOrders} onRowClick={setSelectedOrder} />
+              {viewMode === "cards" ? (
+                <HistoryCards orders={filteredOrders} onCardClick={setSelectedOrder} />
+              ) : (
+                <HistoryTable orders={filteredOrders} onRowClick={setSelectedOrder} />
+              )}
             </motion.div>
           </motion.div>
         </main>
@@ -145,6 +177,6 @@ export default function HistoryPage() {
         isOpen={!!selectedOrder}
         onClose={() => setSelectedOrder(null)}
       />
-    </div>
+    </div >
   );
 }

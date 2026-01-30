@@ -16,7 +16,7 @@ const IMAGE_URL = "https://thumbs.dreamstime.com/b/plato-de-pescado-elegante-alm
 export default function LoginPage() {
   const router = useRouter()
   const { login, currentUser } = usePOSStore()
-  const [username, setUsername] = useState("")
+  const [dni, setDni] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
@@ -26,49 +26,35 @@ export default function LoginPage() {
     if (currentUser) {
       const redirectPath =
         currentUser.role === "kitchen" ? "/kitchen" :
-        currentUser.role === "cashier" ? "/cashier" :
-        "/tables";
+          currentUser.role === "cashier" ? "/cashier" :
+            currentUser.role === "admin" ? "/admin" :
+              "/tables";
       router.push(redirectPath);
     }
   }, [currentUser, router]);
 
-  const users = {
-    admin: { name: "Carlos Admin", role: "admin" as const, site: "restaurante" as const },
-    mesero_restaurante: { name: "Juan Mesero (Rest.)", role: "waiter" as const, site: "restaurante" as const },
-    mesero_polleria: { name: "Pedro Mesero (Poll.)", role: "waiter" as const, site: "polleria" as const },
-    cajero: { name: "María Cajera", role: "cashier" as const, site: "restaurante" as const },
-    cocina_restaurante: { name: "Chef Carlos (Rest.)", role: "kitchen" as const, site: "restaurante" as const },
-    cocina_polleria: { name: "Chef Luis (Poll.)", role: "kitchen" as const, site: "polleria" as const },
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    // Simula una pequeña demora de red
-    setTimeout(() => {
-      const user = users[username.toLowerCase() as keyof typeof users];
-      if (user) {
-        login(user);
-      } else {
-        setError("Usuario o contraseña incorrectos.");
-      }
+    const success = await login(dni, password);
+
+    if (!success) {
+      setError("Credenciales incorrectas o error de conexión.");
       setIsLoading(false);
-    }, 500);
+    }
+    // Si es success, el useEffect redirigirá
   };
 
-  const handleTestUserClick = (userKey: keyof typeof users) => {
-    setUsername(userKey);
-    setPassword("123"); // Contraseña de prueba
-  };
-  
+
+
   const formVariants = {
     hidden: { opacity: 0, scale: 0.95 },
     visible: { opacity: 1, scale: 1, transition: { staggerChildren: 0.1 } },
     shake: { x: [0, -10, 10, -10, 10, 0], transition: { duration: 0.5 } }
   };
-  
+
   const fieldVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
@@ -76,7 +62,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full bg-[#FFF5ED] flex items-center justify-center p-4 font-sans">
-      <motion.div 
+      <motion.div
         variants={formVariants}
         initial="hidden"
         animate="visible"
@@ -92,8 +78,8 @@ export default function LoginPage() {
             animate={{ scale: 1, transition: { delay: 0.2, type: "spring" } }}
           />
           <div className="text-center">
-            <h1 className="text-3xl font-bold tracking-wide">Quantify Gourmet</h1>
-            <p className="text-white/80 mt-1">Sistema de prueba para restaurantes</p>
+            <h1 className="text-3xl font-bold tracking-wide">La Posada</h1>
+            <p className="text-white/80 mt-1">Pollería y Restaurante</p>
           </div>
         </div>
 
@@ -108,8 +94,8 @@ export default function LoginPage() {
             <motion.div variants={fieldVariants} className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A65F33]/50" />
               <Input
-                id="username" type="text" placeholder="Usuario" value={username}
-                onChange={(e) => setUsername(e.target.value)} required
+                id="dni" type="text" placeholder="DNI" value={dni}
+                onChange={(e) => setDni(e.target.value)} required
                 className="h-12 pl-10 text-base border-[#FFE0C2] bg-[#F4EFDF] text-[#A65F33] focus:border-[#FFA142] focus:ring-[#FFA142]/50"
               />
             </motion.div>
@@ -124,7 +110,7 @@ export default function LoginPage() {
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </motion.div>
-            
+
             <AnimatePresence>
               {error && <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-sm text-red-500 text-center">{error}</motion.p>}
             </AnimatePresence>
@@ -136,19 +122,40 @@ export default function LoginPage() {
             </motion.div>
           </form>
 
-          {/* --- Usuarios de Prueba Interactivos --- */}
+          {/* --- Acceso Rápido Demo --- */}
           <div className="mt-8 pt-6 border-t border-[#FFE0C2]">
-            <p className="text-center font-semibold text-[#A65F33] mb-3">O ingresa rápidamente con un usuario de prueba:</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {Object.keys(users).map((userKey) => (
-                <button
-                  key={userKey}
-                  onClick={() => handleTestUserClick(userKey as keyof typeof users)}
-                  className="px-4 py-1.5 rounded-full bg-[#FFF3E5] border border-[#FFE0C2] text-sm font-semibold text-[#A65F33] transition-colors hover:bg-[#FFA142] hover:text-white"
-                >
-                  {userKey.charAt(0).toUpperCase() + userKey.slice(1)}
-                </button>
-              ))}
+            <p className="text-center text-sm text-[#A65F33]/70 mb-3">Accesos Demo (Pollería)</p>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => { setDni("11111111"); setPassword("mozo123"); }}
+                className="px-2 py-1 bg-[#F4EFDF] border border-[#FFE0C2] rounded text-xs text-[#A65F33] hover:bg-[#FFE0C2] transition-colors"
+              >
+                Mozo
+              </button>
+              <button
+                type="button"
+                onClick={() => { setDni("22222222"); setPassword("caja123"); }}
+                className="px-2 py-1 bg-[#F4EFDF] border border-[#FFE0C2] rounded text-xs text-[#A65F33] hover:bg-[#FFE0C2] transition-colors"
+              >
+                Caja
+              </button>
+              <button
+                type="button"
+                onClick={() => { setDni("33333333"); setPassword("cocina123"); }}
+                className="px-2 py-1 bg-[#F4EFDF] border border-[#FFE0C2] rounded text-xs text-[#A65F33] hover:bg-[#FFE0C2] transition-colors"
+              >
+                Cocina
+              </button>
+            </div>
+            <div className="mt-2 text-center">
+              <button
+                type="button"
+                onClick={() => { setDni("12345678"); setPassword("123456"); }}
+                className="px-4 py-1 bg-[#FFA142] text-white rounded text-xs hover:bg-[#FFB167] transition-colors font-semibold"
+              >
+                Admin (Total)
+              </button>
             </div>
           </div>
         </motion.div>

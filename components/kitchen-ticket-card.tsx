@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { usePOSStore, OrderItem, OrderItemStatus } from "@/lib/store"
-import { Clock, User, CheckCircle2, CookingPot, Loader2, AlertTriangle } from "lucide-react"
+import { Clock, User, CheckCircle2, CookingPot, Loader2, AlertTriangle, Store, ShoppingBag, Bike } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import TimeAgo from 'react-timeago'
@@ -27,11 +27,11 @@ export function KitchenTicketCard({ comanda }: { comanda: KitchenComanda }) {
   const { updateOrderItemStatus } = usePOSStore()
 
   // Filtramos los items que aún están en la cocina (no servidos o cancelados)
-  const activeItems = useMemo(() => 
+  const activeItems = useMemo(() =>
     comanda.items.filter(item => item.status === 'pendiente' || item.status === 'en preparación'),
     [comanda.items]
   );
-  
+
   // Verificamos si toda la comanda está lista para ser marcada como completada
   const isComandaReady = useMemo(() => activeItems.length === 0 && comanda.items.length > 0, [activeItems.length, comanda.items.length]);
 
@@ -44,8 +44,8 @@ export function KitchenTicketCard({ comanda }: { comanda: KitchenComanda }) {
       icon: Loader2,
       color: "text-[#A65F33]", // Marrón Oscuro
       label: "En Cola",
-      nextAction: { 
-        status: 'en preparación' as OrderItemStatus, 
+      nextAction: {
+        status: 'en preparación' as OrderItemStatus,
         label: "Empezar a Preparar",
         variant: "outline" as const,
         className: "border-[#A65F33] text-[#A65F33] hover:bg-[#FFE0C2] hover:text-[#A65F33]"
@@ -55,8 +55,8 @@ export function KitchenTicketCard({ comanda }: { comanda: KitchenComanda }) {
       icon: CookingPot,
       color: "text-[#FFA142]", // Naranja Principal
       label: "Cocinando",
-      nextAction: { 
-        status: 'listo' as OrderItemStatus, 
+      nextAction: {
+        status: 'listo' as OrderItemStatus,
         label: "¡Plato Listo!",
         variant: "default" as const,
         className: "bg-[#FFA142] text-white shadow-lg hover:bg-[#FFB167]"
@@ -65,7 +65,7 @@ export function KitchenTicketCard({ comanda }: { comanda: KitchenComanda }) {
   };
 
   return (
-    <motion.div 
+    <motion.div
       layout
       initial={{ scale: 0.9, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
@@ -120,6 +120,30 @@ export function KitchenTicketCard({ comanda }: { comanda: KitchenComanda }) {
                     {config.label}
                   </div>
                 </div>
+
+                {/* ✅ Tipo de Pedido */}
+                {item.orderType && (
+                  <div className="mt-2 flex items-center gap-1.5">
+                    {item.orderType === "mesa" && (
+                      <div className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                        <Store size={12} />
+                        <span>En Mesa</span>
+                      </div>
+                    )}
+                    {item.orderType === "para-llevar" && (
+                      <div className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                        <ShoppingBag size={12} />
+                        <span>Para Llevar</span>
+                      </div>
+                    )}
+                    {item.orderType === "delivery" && (
+                      <div className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700">
+                        <Bike size={12} />
+                        <span>Delivery</span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <Button
                   size="sm"
                   variant={config.nextAction.variant}
@@ -133,7 +157,7 @@ export function KitchenTicketCard({ comanda }: { comanda: KitchenComanda }) {
           })}
         </AnimatePresence>
       </div>
-      
+
       {/* Estado de Comanda Completada */}
       <AnimatePresence>
         {isComandaReady && (

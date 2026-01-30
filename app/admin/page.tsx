@@ -1,82 +1,55 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
-import { motion, AnimatePresence } from "framer-motion"
-import { usePOSStore } from "@/lib/store"
-import { Sidebar } from "@/components/sidebar"
-import { Header } from "@/components/header"
-import { DishFormModal } from "@/components/dish-form-modal"
-import { Plus, Edit2, Trash2, Utensils, CupSoda, IceCream, Salad, Search, CheckCircle2, XCircle, SearchX } from "lucide-react" // Importamos nuevos iconos
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import type { MenuItem } from "@/lib/store"
-import { JSX } from "react/jsx-runtime"
-import { cn } from "@/lib/utils"
-
-const categoryIcons: Record<string, JSX.Element> = {
-  Entradas: <Salad size={20} className="text-[#A65F33]/80" />,
-  Fondos: <Utensils size={20} className="text-[#A65F33]/80" />,
-  Bebidas: <CupSoda size={20} className="text-[#A65F33]/80" />,
-  Postres: <IceCream size={20} className="text-[#A65F33]/80" />
-}
-
+import { usePOSStore } from "@/lib/store";
+import { Sidebar } from "@/components/sidebar";
+import { Header } from "@/components/header";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Settings, Printer, Globe, Database, Moon, Sun, Save, Store, Receipt } from "lucide-react";
+import { toast } from "react-hot-toast";
+import { useState } from "react";
 
 export default function AdminPage() {
-  const router = useRouter()
-  const { currentUser, menuItems, toggleMenuItemAvailability, addMenuItem, updateMenuItem, deleteMenuItem } =
-    usePOSStore()
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingDish, setEditingDish] = useState<MenuItem | undefined>(undefined)
-  const [dishToDelete, setDishToDelete] = useState<MenuItem | null>(null)
-  const [activeCategory, setActiveCategory] = useState<string>("All")
-  const [searchTerm, setSearchTerm] = useState("")
+  const { currentUser } = usePOSStore();
 
-  useEffect(() => {
-    if (!currentUser || currentUser.role !== "admin") {
-      router.push("/")
-    }
-  }, [currentUser, router])
+  // Mock States for Settings
+  const [restaurantInfo, setRestaurantInfo] = useState({
+    name: "Quantify Gourmet",
+    address: "Av. Principal 123, Lima",
+    ruc: "20123456789",
+    phone: "+51 987 654 321"
+  });
 
-  if (!currentUser || currentUser.role !== "admin") return null
+  const [systemSettings, setSystemSettings] = useState({
+    darkMode: false,
+    soundEffects: true,
+    printAuto: false,
+    igv: 18
+  });
 
-  const categories = ["Entradas", "Fondos", "Bebidas", "Postres"]
+  const [backupStatus, setBackupStatus] = useState<string | null>(null);
 
-  const filteredMenuItems = useMemo(() => {
-    return menuItems.filter(item => {
-      const categoryMatch = activeCategory === "All" || item.category === activeCategory;
-      const searchMatch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      return categoryMatch && searchMatch;
-    });
-  }, [menuItems, activeCategory, searchTerm]);
-  const handleAddDish = () => {
-    setEditingDish(undefined)
-    setIsModalOpen(true)
-  }
+  if (!currentUser || currentUser.role !== "admin") return null;
 
-  const handleEditDish = (dish: MenuItem) => {
-    setEditingDish(dish)
-    setIsModalOpen(true)
-  }
-  const handleSubmitDish = (dish: Omit<MenuItem, "id">) => {
-    if (editingDish) {
-      updateMenuItem(editingDish.id, dish);
-    } else {
-      addMenuItem(dish);
-    }
-  }
-  const handleConfirmDelete = () => {
-    if (dishToDelete) {
-      deleteMenuItem(dishToDelete.id);
-      setDishToDelete(null);
-    }
-  }
-  const containerVariants = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
-  const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
-  if (!currentUser || currentUser.role !== "admin") return null
+  const handleSaveGeneral = () => {
+    toast.success("Información del restaurante actualizada");
+  };
+
+  const handleSaveSystem = () => {
+    toast.success("Preferencias del sistema guardadas");
+  };
+
+  const handleBackup = () => {
+    setBackupStatus("creating");
+    setTimeout(() => {
+      setBackupStatus("success");
+      toast.success("Copia de seguridad creada correctamente");
+    }, 2000);
+  };
 
   return (
     <div className="flex h-screen bg-[#FFF5ED]">
@@ -84,167 +57,186 @@ export default function AdminPage() {
       <div className="flex flex-1 flex-col">
         <Header />
         <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-          <motion.div variants={containerVariants} initial="hidden" animate="visible" className="w-full max-w-7xl mx-auto">
-            {/* Cabecera y botón de añadir */}
-            <motion.div variants={itemVariants} className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div>
-                <h2 className="text-3xl font-bold text-[#A65F33]">Gestión de Menú</h2>
-                <p className="text-base text-[#A65F33]/70">Añade, edita y gestiona la disponibilidad de tus platos.</p>
-              </div>
-              <Button onClick={handleAddDish} className="h-12 px-6 text-base font-semibold bg-[#FFA142] text-white shadow-lg shadow-orange-300/60 hover:bg-[#FFB167] hover:-translate-y-0.5 transition-all duration-300">
-                <Plus className="mr-2 h-5 w-5" /> Añadir Plato
-              </Button>
-            </motion.div>
+          <div className="flex items-center gap-3 mb-8">
+            <div className="bg-orange-100 p-3 rounded-xl">
+              <Settings className="w-8 h-8 text-orange-600" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-[#A65F33]">Configuración del Sistema</h1>
+              <p className="text-[#A65F33]/70">Administra las preferencias globales y datos de la empresa.</p>
+            </div>
+          </div>
 
-            {/* Filtros de Categoría */}
-            <motion.div variants={itemVariants} className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4 relative">
-              {["All", ...categories].map((category) => {
-                const isAll = category === "All";
-                const relevantItems = isAll ? menuItems : menuItems.filter(i => i.category === category);
-                const count = relevantItems.length;
-                const availableCount = relevantItems.filter(i => i.available).length;
-                const unavailableCount = count - availableCount;
-                const isActive = activeCategory === category;
+          <Tabs defaultValue="general" className="space-y-6">
+            <TabsList className="bg-white border border-[#FFE0C2] p-1 h-auto rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-3 w-full md:w-[600px]">
+              <TabsTrigger value="general" className="data-[state=active]:bg-[#FFA142] data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg py-2.5">
+                <Store className="w-4 h-4 mr-2" /> General
+              </TabsTrigger>
+              <TabsTrigger value="system" className="data-[state=active]:bg-[#FFA142] data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg py-2.5">
+                <Globe className="w-4 h-4 mr-2" /> Sistema
+              </TabsTrigger>
+              <TabsTrigger value="data" className="data-[state=active]:bg-[#FFA142] data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg py-2.5">
+                <Database className="w-4 h-4 mr-2" /> Datos
+              </TabsTrigger>
+            </TabsList>
 
-                return (
-                  <button key={category} onClick={() => setActiveCategory(category)} className="relative rounded-xl p-4 text-left bg-white border border-[#FFE0C2] hover:shadow-lg hover:shadow-orange-200/50 transition-all duration-300">
-                    {isActive && <motion.div layoutId="activeCategory" className="absolute inset-0 rounded-xl bg-[#FFA142]/10 border-2 border-[#FFA142]" />}
-                    <div className="relative z-10">
-                      <div className="text-[#A65F33]/80">{isAll ? <Utensils size={24} /> : categoryIcons[category]}</div>
-                      <h3 className="mt-2 text-lg font-bold text-[#A65F33]">{isAll ? 'Todos' : category}</h3>
-                      <p className="text-sm text-[#A65F33]/70">{count} {count === 1 ? 'ítem' : 'ítems'}</p>
-                      {/* ✅ CAMBIO: Estadísticas de disponibilidad añadidas */}
-                      <div className="mt-2 flex items-center gap-3 text-xs font-medium">
-                        <span className="flex items-center gap-1 text-green-600"><CheckCircle2 size={14} /> {availableCount} Disp.</span>
-                        {unavailableCount > 0 && <span className="flex items-center gap-1 text-red-600"><XCircle size={14} /> {unavailableCount} Agot.</span>}
+            {/* General Settings */}
+            <TabsContent value="general">
+              <Card className="border-[#FFE0C2] bg-white shadow-sm">
+                <CardHeader>
+                  <CardTitle>Datos de la Empresa</CardTitle>
+                  <CardDescription>Información que aparecerá en los comprobantes y reportes.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Nombre del Establecimiento</Label>
+                      <Input
+                        id="name"
+                        value={restaurantInfo.name}
+                        onChange={(e) => setRestaurantInfo({ ...restaurantInfo, name: e.target.value })}
+                        className="border-[#FFE0C2] focus:ring-[#FFA142]"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ruc">RUC</Label>
+                      <Input
+                        id="ruc"
+                        value={restaurantInfo.ruc}
+                        onChange={(e) => setRestaurantInfo({ ...restaurantInfo, ruc: e.target.value })}
+                        className="border-[#FFE0C2] focus:ring-[#FFA142]"
+                      />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="address">Dirección Fiscal</Label>
+                      <Input
+                        id="address"
+                        value={restaurantInfo.address}
+                        onChange={(e) => setRestaurantInfo({ ...restaurantInfo, address: e.target.value })}
+                        className="border-[#FFE0C2] focus:ring-[#FFA142]"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Teléfono de Contacto</Label>
+                      <Input
+                        id="phone"
+                        value={restaurantInfo.phone}
+                        onChange={(e) => setRestaurantInfo({ ...restaurantInfo, phone: e.target.value })}
+                        className="border-[#FFE0C2] focus:ring-[#FFA142]"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end pt-4">
+                    <Button onClick={handleSaveGeneral} className="bg-[#FFA142] hover:bg-[#FFB167] text-white">
+                      <Save className="w-4 h-4 mr-2" /> Guardar Cambios
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* System Settings */}
+            <TabsContent value="system">
+              <div className="grid gap-6 md:grid-cols-2">
+                <Card className="border-[#FFE0C2] bg-white shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Receipt className="w-5 h-5 text-orange-500" /> Facturación
+                    </CardTitle>
+                    <CardDescription>Configuración de impuestos y monedas.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="space-y-0.5">
+                        <Label className="text-base">Impresión Automática</Label>
+                        <p className="text-xs text-gray-500">Imprimir ticket al cerrar venta</p>
+                      </div>
+                      <Switch
+                        checked={systemSettings.printAuto}
+                        onCheckedChange={(c) => setSystemSettings({ ...systemSettings, printAuto: c })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>IGV / Impuesto (%)</Label>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={systemSettings.igv}
+                          onChange={(e) => setSystemSettings({ ...systemSettings, igv: Number(e.target.value) })}
+                          className="w-24 border-[#FFE0C2]"
+                        />
+                        <span className="text-sm font-bold text-gray-500">%</span>
                       </div>
                     </div>
-                  </button>
-                );
-              })}
-            </motion.div>
+                  </CardContent>
+                </Card>
 
-            {/* Barra de Búsqueda */}
-            <motion.div variants={itemVariants} className="mb-6 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#A65F33]/50" />
-              <Input
-                placeholder="Buscar por nombre de plato..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-12 text-base border-[#FFE0C2] bg-white text-[#A65F33] focus:border-[#FFA142] focus:ring-[#FFA142]/50"
-              />
-            </motion.div>
+                <Card className="border-[#FFE0C2] bg-white shadow-sm">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Globe className="w-5 h-5 text-blue-500" /> Interfaz
+                    </CardTitle>
+                    <CardDescription>Personaliza la apariencia del sistema.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {systemSettings.darkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5 text-orange-500" />}
+                        <div className="space-y-0.5">
+                          <Label className="text-base">Modo Oscuro</Label>
+                          <p className="text-xs text-gray-500">Cambiar tema de la interfaz</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={systemSettings.darkMode}
+                        onCheckedChange={(c) => setSystemSettings({ ...systemSettings, darkMode: c })}
+                      />
+                    </div>
+                  </CardContent>
+                  <div className="p-6 pt-0 flex justify-end">
+                    <Button onClick={handleSaveSystem} variant="outline" className="text-orange-600 border-orange-200">
+                      Guardar Preferencias
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            </TabsContent>
 
-            {/* Tabla de Platos */}
-            <motion.div variants={itemVariants} className="rounded-xl border border-[#FFE0C2] bg-white shadow-sm overflow-hidden">
-              <Table className="border-separate border-spacing-0">
-                <TableHeader className="bg-[#FFF3E5]">
-                  <TableRow>
-                    {/* ✅ CAMBIO: La cabecera ahora solo tiene 4 columnas */}
-                    <TableHead className="w-[300px] text-[#A65F33] font-semibold">Nombre</TableHead>
-                    <TableHead className="text-[#A65F33] font-semibold">Categoría</TableHead>
-                    <TableHead className="text-[#A65F33] font-semibold">Precio</TableHead>
-                    {/* ✅ CAMBIO: La última columna ahora agrupa todo */}
-                    <TableHead className="text-right text-[#A65F33] font-semibold w-[280px]">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  <AnimatePresence>
-                    {filteredMenuItems.length > 0 ? (
-                      filteredMenuItems.map((item, index) => (
-                        <motion.tr
-                          key={item.id}
-                          layout
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          whileTap={{ scale: 0.99 }}
-                          className={cn("hover:bg-[#FFF5ED]/60", index % 2 !== 0 && "bg-[#FFF5ED]/40")}
-                        >
-                          <TableCell className="font-semibold text-[#A65F33]">
-                            <div className="flex items-center gap-3">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#FFF3E5] border border-[#FFE0C2] shrink-0">
-                                {categoryIcons[item.category]}
-                              </div>
-                              <span>{item.name}</span>
-                            </div>
-                          </TableCell>
+            {/* Data Settings */}
+            <TabsContent value="data">
+              <Card className="border-[#FFE0C2] bg-white shadow-sm border-l-4 border-l-orange-400">
+                <CardHeader>
+                  <CardTitle>Copias de Seguridad</CardTitle>
+                  <CardDescription>Gestiona el respaldo de tu base de datos.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="bg-orange-50 p-4 rounded-lg flex items-start gap-4">
+                    <Database className="w-10 h-10 text-orange-500 mt-1" />
+                    <div>
+                      <h4 className="font-bold text-orange-900">Estado del Sistema</h4>
+                      <p className="text-sm text-orange-800/80 mb-2">
+                        Última copia de seguridad: <span className="font-bold">Hace 2 horas</span>
+                      </p>
+                      <p className="text-xs text-orange-700">Se recomienda realizar copias al cierre de caja.</p>
+                    </div>
+                  </div>
 
-                          <TableCell>
-                            <div className="inline-flex items-center rounded-full border border-[#FFE0C2] bg-[#FFF3E5] px-2.5 py-0.5 text-xs font-semibold text-[#A65F33]">
-                              {item.category}
-                            </div>
-                          </TableCell>
-
-                          <TableCell className="font-semibold text-[#FFA142]">S/ {item.price.toFixed(2)}</TableCell>
-
-                          {/* ✅ CAMBIO PRINCIPAL: Nueva celda de acciones unificada */}
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-4">
-                              {/* Grupo de Disponibilidad */}
-                              <div className="flex items-center gap-2">
-                                <Switch
-                                  checked={item.available}
-                                  onCheckedChange={() => toggleMenuItemAvailability(item.id)}
-                                />
-                                <span className={cn(
-                                  "text-sm font-semibold w-20", // Ancho fijo para evitar saltos de layout
-                                  item.available ? "text-green-600" : "text-red-600"
-                                )}>
-                                  {item.available ? "Disponible" : "Agotado"}
-                                </span>
-                              </div>
-
-                              {/* Separador Visual */}
-                              <div className="h-6 w-px bg-[#FFE0C2]" />
-
-                              {/* Botones de Acción */}
-                              <div>
-                                <Button variant="ghost" size="icon" onClick={() => handleEditDish(item)} className="rounded-full hover:bg-[#FFA142]/10"><Edit2 className="h-5 w-5 text-[#FFA142]" /></Button>
-                                <Button variant="ghost" size="icon" onClick={() => setDishToDelete(item)} className="rounded-full hover:bg-red-500/10"><Trash2 className="h-5 w-5 text-red-500" /></Button>
-                              </div>
-                            </div>
-                          </TableCell>
-                        </motion.tr>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={4} className="h-48 text-center"> {/* Colspan ajustado a 4 */}
-                          <div className="flex flex-col items-center justify-center gap-4">
-                            <SearchX size={48} className="text-[#A65F33]/30" />
-                            <p className="text-lg font-semibold text-[#A65F33]">No se encontraron platos</p>
-                            <p className="text-sm text-[#A65F33]/70">Intenta ajustar tu búsqueda o filtro de categoría.</p>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </AnimatePresence>
-                </TableBody>
-              </Table>
-            </motion.div>
-          </motion.div>
+                  <div className="flex gap-4">
+                    <Button
+                      onClick={handleBackup}
+                      disabled={backupStatus === 'creating'}
+                      className="bg-gray-800 hover:bg-gray-900 text-white"
+                    >
+                      {backupStatus === 'creating' ? 'Creando respaldo...' : 'Crear Copia Manual'}
+                    </Button>
+                    <Button variant="outline">Restaurar Copia</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
-
-      {/* Modales */}
-      <DishFormModal open={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleSubmitDish} dish={editingDish} />
-
-      <AlertDialog open={dishToDelete !== null} onOpenChange={() => setDishToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro de eliminar este plato?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción es permanente y no se puede deshacer. Se eliminará "{dishToDelete?.name}" del menú.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmDelete} className="bg-red-600 hover:bg-red-700">
-              Sí, eliminar plato
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
-  )
+  );
 }

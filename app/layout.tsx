@@ -22,7 +22,7 @@ const lato = Lato({
 })
 
 export const metadata: Metadata = {
-  title: "Quantify Gourmet - Sistema de Gestión de Restaurantes",
+  title: "Pollería y Restaurante La Posada - Sistema de Gestión",
   description: "Sistema POS profesional para restaurantes",
   generator: "v0.app",
 }
@@ -35,7 +35,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${poppins.variable} ${lato.variable} antialiased`}>
-        
+
 
         <Suspense fallback={<div>Loading...</div>}>
           {children}

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { WaiterPerformance } from "@/components/reports/WaiterPerformance"
 
 const SummaryCard = ({ icon: Icon, title, value, iconBgColor }: { icon: React.ElementType, title: string, value: string, iconBgColor: string }) => (
   <motion.div
@@ -27,7 +28,7 @@ const SummaryCard = ({ icon: Icon, title, value, iconBgColor }: { icon: React.El
           <Icon className="h-5 w-5" />
         </div>
       </div>
-      
+
       {/* Sección Inferior: Valor Principal */}
       <div>
         <p className="text-4xl font-bold text-[#A65F33]">{value}</p>
@@ -86,7 +87,7 @@ export default function ReportsPage() {
     { id: "yape" as const, name: "Yape/Plin", icon: Smartphone },
     { id: "transferencia" as const, name: "Transferencia", icon: Building2 },
   ]
-   
+
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -153,13 +154,13 @@ export default function ReportsPage() {
                               exit={{ opacity: 0, scale: 0.8 }}
                               className={cn("rounded-full px-3 py-1 text-xs font-bold",
                                 difference === 0 ? "bg-green-100 text-green-700"
-                                : difference > 0 ? "bg-orange-100 text-orange-600"
-                                : "bg-red-100 text-red-600"
+                                  : difference > 0 ? "bg-orange-100 text-orange-600"
+                                    : "bg-red-100 text-red-600"
                               )}
                             >
                               {difference === 0 ? "✓ Cuadrado"
-                               : difference > 0 ? `Sobrante: S/ ${difference.toFixed(2)}`
-                               : `Faltante: S/ ${Math.abs(difference).toFixed(2)}`}
+                                : difference > 0 ? `Sobrante: S/ ${difference.toFixed(2)}`
+                                  : `Faltante: S/ ${Math.abs(difference).toFixed(2)}`}
                             </motion.div>
                           )}
                         </AnimatePresence>
@@ -170,40 +171,48 @@ export default function ReportsPage() {
               </CardContent>
             </Card>
 
-            {/* Top 5 Platos */}
-            <Card className="lg:col-span-2 border-[#FFE0C2] bg-white shadow-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-xl text-[#A65F33]">
-                  <Award size={22} className="text-amber-500" /> Top 5 Platos del Día
-                </CardTitle>
-                <CardDescription className="text-[#A65F33]/70">Productos más vendidos por ingresos generados.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {topDishes.map((dish, index) => {
-                  const medalColors = ["text-amber-400", "text-slate-400", "text-amber-600"]
-                  const barWidth = (dish.revenue / topDishes[0].revenue) * 100
-                  return (
-                    <div key={dish.name} className="flex items-center gap-4">
-                      {index < 3 ? <Award size={24} className={medalColors[index]} fill="currentColor" /> : <div className="w-6 text-center font-bold text-[#A65F33]/50">{index + 1}</div>}
-                      <div className="flex-1">
-                        <div className="flex justify-between items-baseline">
-                          <p className="font-semibold text-[#A65F33]">{dish.name}</p>
-                          <p className="text-sm font-bold text-[#FFA142]">S/ {dish.revenue.toFixed(2)}</p>
-                        </div>
-                        <div className="mt-1 h-2 w-full rounded-full bg-[#FFF3E5]">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${barWidth}%` }}
-                            transition={{ duration: 0.5, ease: "easeOut" }}
-                            className="h-full rounded-full bg-gradient-to-r from-[#FFB167] to-[#FFA142]"
-                          />
+            {/* Top 5 Platos y Rendimiento de Mozos colapsados en columnas si es necesario */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* Ranking Mozos */}
+              <div className="h-[400px]">
+                <WaiterPerformance />
+              </div>
+
+              {/* Top 5 Platos */}
+              <Card className="border-[#FFE0C2] bg-white shadow-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-xl text-[#A65F33]">
+                    <Award size={22} className="text-amber-500" /> Top 5 Platos del Día
+                  </CardTitle>
+                  <CardDescription className="text-[#A65F33]/70">Productos más vendidos por ingresos generados.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {topDishes.map((dish, index) => {
+                    const medalColors = ["text-amber-400", "text-slate-400", "text-amber-600"]
+                    const barWidth = (dish.revenue / topDishes[0].revenue) * 100
+                    return (
+                      <div key={dish.name} className="flex items-center gap-4">
+                        {index < 3 ? <Award size={24} className={medalColors[index]} fill="currentColor" /> : <div className="w-6 text-center font-bold text-[#A65F33]/50">{index + 1}</div>}
+                        <div className="flex-1">
+                          <div className="flex justify-between items-baseline">
+                            <p className="font-semibold text-[#A65F33]">{dish.name}</p>
+                            <p className="text-sm font-bold text-[#FFA142]">S/ {dish.revenue.toFixed(2)}</p>
+                          </div>
+                          <div className="mt-1 h-2 w-full rounded-full bg-[#FFF3E5]">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              animate={{ width: `${barWidth}%` }}
+                              transition={{ duration: 0.5, ease: "easeOut" }}
+                              className="h-full rounded-full bg-gradient-to-r from-[#FFB167] to-[#FFA142]"
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )
-                })}
-              </CardContent>
-            </Card>
+                    )
+                  })}
+                </CardContent>
+              </Card>
+            </div>
           </div>
 
           <div className="mt-8 flex justify-end">
