@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePOSStore, MenuItem, Site } from "@/lib/store";
 import { DishFormModal } from "@/components/dish-form-modal";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
     UtensilsCrossed, Plus, Search, Filter, Trash2, Edit, LayoutGrid, List, CheckCircle2, XCircle,
-    Utensils, CupSoda, IceCream, Salad, Flame, Beef, Soup, Wine, GlassWater, Beer, ConciergeBell // Expanded Icons
+    Utensils, CupSoda, IceCream, Salad, Flame, Beef, Soup, Wine, GlassWater, Beer, ConciergeBell, AlertCircle, RefreshCw // Expanded Icons
 } from "lucide-react";
 import { JSX } from "react/jsx-runtime";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { toast } from "react-hot-toast";
 
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
@@ -29,19 +30,70 @@ const categoryThemes: Record<string, { icon: any, color: string, bg: string, bor
     "Bebidas": { icon: CupSoda, color: "text-cyan-600", bg: "bg-cyan-50", border: "border-cyan-200", shadow: "shadow-cyan-100" },
     "Gaseosas": { icon: GlassWater, color: "text-sky-600", bg: "bg-sky-50", border: "border-sky-200", shadow: "shadow-sky-100" },
     "Licores": { icon: Wine, color: "text-purple-600", bg: "bg-purple-50", border: "border-purple-200", shadow: "shadow-purple-100" },
-    "Postres": { icon: IceCream, color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-200", shadow: "shadow-pink-100" }
+    "Postres": { icon: IceCream, color: "text-pink-600", bg: "bg-pink-50", border: "border-pink-200", shadow: "shadow-pink-100" },
+    "Combos": { icon: ConciergeBell, color: "text-amber-600", bg: "bg-amber-50", border: "border-amber-200", shadow: "shadow-amber-100" },
+    "Elaborado": { icon: Utensils, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-200", shadow: "shadow-orange-100" },
 };
 
 export default function AdminDishesPage() {
-    const { menuItems, addMenuItem, updateMenuItem, deleteMenuItem } = usePOSStore();
+    const { menuItems, addMenuItem, updateMenuItem, deleteMenuItem, fetchProducts } = usePOSStore();
     const [searchTerm, setSearchTerm] = useState("");
     const [filterCategory, setFilterCategory] = useState("all");
     const [filterSite, setFilterSite] = useState<Site | "all">("all");
     const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedDish, setSelectedDish] = useState<MenuItem | undefined>(undefined);
+
+    // Mobile sidebar state
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
+    // Mobile sidebar handlers
+    const handleMobileMenuToggle = () => {
+        setIsMobileSidebarOpen(!isMobileSidebarOpen);
+    };
+
+    const handleMobileSidebarClose = () => {
+        setIsMobileSidebarOpen(false);
+    };
+
+    // Fetch products from backend on mount
+    useEffect(() => {
+        const loadProducts = async () => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                await fetchProducts();
+            } catch (err: any) {
+                const errorMessage = err?.message || "Error al cargar los productos";
+                setError(errorMessage);
+                toast.error(errorMessage);
+                console.error("Error loading products:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadProducts();
+    }, [fetchProducts]);
+
+    // Handler to retry loading products
+    const handleRetry = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            await fetchProducts();
+            toast.success("Productos cargados correctamente");
+        } catch (err: any) {
+            const errorMessage = err?.message || "Error al cargar los productos";
+            setError(errorMessage);
+            toast.error(errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // Derived State
     const categories = Array.from(new Set(menuItems.map(item => item.category))).sort();
@@ -86,9 +138,9 @@ export default function AdminDishesPage() {
 
     return (
         <div className="flex h-screen bg-[#FFF5ED]">
-            <Sidebar />
+            <Sidebar isMobileOpen={isMobileSidebarOpen} onMobileClose={handleMobileSidebarClose} />
             <div className="flex flex-1 flex-col">
-                <Header />
+                <Header onMobileMenuToggle={handleMobileMenuToggle} />
                 <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
                     {/* Header Page Content */}
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
@@ -106,62 +158,45 @@ export default function AdminDishesPage() {
                         </Button>
                     </div>
 
-                    {/* Category Cards Filter */}
-                    <div className="mb-8 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                        {["all", ...categories].map((category) => {
-                            const isAll = category === "all";
-                            const categoryName = isAll ? "Todos" : category;
-                            const relevantItems = isAll ? menuItems : menuItems.filter(i => i.category === category);
-                            const count = relevantItems.length;
-                            const isActive = filterCategory === category;
+                    {/* Category Cards Filter (Horizontal, compact, colored icons) */}
+                    <div className="mb-6">
+                        <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2">
+                            {["all", ...categories].map((category) => {
+                                const isAll = category === "all";
+                                const categoryName = isAll ? "Todos" : category;
+                                const relevantItems = isAll ? menuItems : menuItems.filter(i => i.category === category);
+                                const count = relevantItems.length;
+                                const isActive = filterCategory === category;
 
-                            // Get Theme or Default
-                            const theme = categoryThemes[category] || { icon: UtensilsCrossed, color: "text-gray-600", bg: "bg-gray-50", border: "border-gray-200", shadow: "shadow-gray-100" };
-                            const Icon = theme.icon;
+                                // Get Theme or Default
+                                const theme = categoryThemes[category] || { icon: UtensilsCrossed, color: "text-gray-600", bg: "bg-gray-50", border: "border-gray-200", shadow: "shadow-gray-100" };
+                                const Icon = theme.icon;
 
-                            return (
-                                <motion.button
-                                    key={category}
-                                    whileHover={{ scale: 1.05, y: -2 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => setFilterCategory(category)}
-                                    className={cn(
-                                        "relative flex flex-col items-start p-3 rounded-xl border transition-all duration-300 group overflow-hidden",
-                                        isActive
-                                            ? cn("bg-white shadow-lg ring-1 ring-offset-2", theme.border.replace('border-', 'ring-'), theme.shadow)
-                                            : "bg-white border-transparent hover:border-gray-200 hover:shadow-md"
-                                    )}
-                                    style={isActive ? { borderColor: 'transparent' } : {}}
-                                >
-                                    {/* Active Indicator Background with Gradient */}
-                                    {isActive && (
-                                        <div className={cn("absolute inset-0 rounded-xl opacity-10 bg-gradient-to-br from-white via-transparent to-current", theme.color)} />
-                                    )}
+                                return (
+                                    <motion.button
+                                        key={category}
+                                        whileHover={{ translateY: -4 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setFilterCategory(category)}
+                                        className={cn(
+                                            "relative inline-flex items-center gap-3 min-w-[150px] p-2 rounded-lg transition-all duration-200 shrink-0",
+                                            isActive
+                                                ? cn("bg-white shadow-md ring-1 ring-orange-200")
+                                                : "bg-white/90 hover:bg-white"
+                                        )}
+                                    >
+                                        <div className={cn("p-2 rounded-md flex items-center justify-center", theme.bg)}>
+                                            <Icon size={18} className={cn(theme.color, "drop-shadow-sm")} />
+                                        </div>
 
-                                    <div className={cn(
-                                        "p-2.5 rounded-lg mb-2 transition-all duration-300 relative z-10",
-                                        isActive ? theme.bg : "bg-gray-50 group-hover:bg-gray-100",
-                                        "group-hover:shadow-sm"
-                                    )}>
-                                        <motion.div
-                                            animate={isActive ? { rotate: [0, -10, 10, 0] } : {}}
-                                            transition={{ duration: 0.5, ease: "easeInOut" }}
-                                        >
-                                            <Icon size={24} className={cn("transition-colors duration-300", isActive ? theme.color : "text-gray-400 group-hover:text-gray-600")} />
-                                        </motion.div>
-                                    </div>
-
-                                    <div className="relative z-10">
-                                        <span className={cn("font-bold text-sm block leading-tight transition-colors", isActive ? "text-gray-900" : "text-gray-600 group-hover:text-gray-800")}>
-                                            {categoryName}
-                                        </span>
-                                        <span className={cn("text-[10px] font-semibold mt-1 block transition-colors", isActive ? theme.color : "text-gray-400 group-hover:text-gray-500")}>
-                                            {count} items
-                                        </span>
-                                    </div>
-                                </motion.button>
-                            );
-                        })}
+                                        <div className="text-left">
+                                            <div className={cn("font-semibold text-sm leading-tight", isActive ? "text-gray-900" : "text-gray-700")}>{categoryName}</div>
+                                            <div className="text-[11px] text-gray-400">{count} items</div>
+                                        </div>
+                                    </motion.button>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Toolbar */}
@@ -207,7 +242,33 @@ export default function AdminDishesPage() {
 
                     {/* Content */}
                     <AnimatePresence mode="wait">
-                        {filteredItems.length === 0 ? (
+                        {isLoading ? (
+                            <motion.div
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                className="text-center py-20 text-[#A65F33]/50"
+                            >
+                                <UtensilsCrossed className="mx-auto h-16 w-16 mb-4 opacity-20 animate-pulse" />
+                                <p className="text-lg">Cargando productos...</p>
+                            </motion.div>
+                        ) : error ? (
+                            <motion.div
+                                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                                className="text-center py-20"
+                            >
+                                <div className="bg-red-50 border border-red-200 rounded-xl p-8 max-w-md mx-auto">
+                                    <AlertCircle className="mx-auto h-16 w-16 mb-4 text-red-500" />
+                                    <h3 className="text-lg font-bold text-red-900 mb-2">Error al cargar productos</h3>
+                                    <p className="text-red-700 mb-4">{error}</p>
+                                    <Button 
+                                        onClick={handleRetry}
+                                        className="bg-[#FFA142] hover:bg-[#FFB167] text-white"
+                                    >
+                                        <RefreshCw className="mr-2 h-4 w-4" />
+                                        Reintentar
+                                    </Button>
+                                </div>
+                            </motion.div>
+                        ) : filteredItems.length === 0 ? (
                             <motion.div
                                 initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                                 className="text-center py-20 text-[#A65F33]/50"

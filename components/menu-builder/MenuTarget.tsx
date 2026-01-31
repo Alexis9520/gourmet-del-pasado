@@ -1,13 +1,14 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { SortableContext, verticalListSortingStrategy, useSortable, rectSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { MenuItem, Menu } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Trash2, GripVertical, Calendar, Clock, ArrowDownCircle, Coins, ListOrdered, BarChart3, Eraser, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "react-hot-toast";
+import { getCategoryIcon } from "./DishSource";
 
 export function MenuTarget({
     menu,
@@ -93,11 +94,13 @@ export function MenuTarget({
             >
                 <SortableContext
                     items={menu.items}
-                    strategy={verticalListSortingStrategy}
+                    strategy={menu.type === 'weekly' ? rectSortingStrategy : verticalListSortingStrategy}
                 >
-                    <div className="space-y-3 min-h-[100px] h-full">
+                    <div className={cn(
+                        menu.type === 'weekly' ? 'grid grid-cols-2 gap-3 min-h-[100px] h-full' : 'space-y-3 min-h-[100px] h-full'
+                    )}>
                         {menuDishes.map((item) => (
-                            <SortableMenuItem key={item.id} id={item.id} item={item} onRemove={() => onRemoveItem(item.id)} />
+                            <SortableMenuItem key={item.id} id={item.id} item={item} onRemove={() => onRemoveItem(item.id)} isWeekly={menu.type === 'weekly'} />
                         ))}
 
                         {menuDishes.length === 0 && !isPlaceholder && (
@@ -140,7 +143,7 @@ export function MenuTarget({
     );
 }
 
-function SortableMenuItem({ id, item, onRemove }: { id: string, item: MenuItem, onRemove: () => void }) {
+function SortableMenuItem({ id, item, onRemove, isWeekly }: { id: string, item: MenuItem, onRemove: () => void, isWeekly?: boolean }) {
     const {
         attributes,
         listeners,
@@ -155,6 +158,44 @@ function SortableMenuItem({ id, item, onRemove }: { id: string, item: MenuItem, 
         transition,
         opacity: isDragging ? 0.5 : 1,
     };
+
+    // Weekly mode: render as compact card for grid
+    if (isWeekly) {
+        return (
+            <div
+                ref={setNodeRef}
+                style={style}
+                className={cn(
+                    "group bg-white p-3 rounded-lg border border-gray-100 shadow-sm transition-all hover:shadow-md hover:-translate-y-1 relative overflow-hidden cursor-grab",
+                    isDragging ? "opacity-40 z-50 scale-105" : ""
+                )}
+                {...attributes}
+                {...listeners}
+            >
+                <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-lg bg-orange-50 flex items-center justify-center text-orange-600 overflow-hidden">
+                            {item.image ? (
+                                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="text-orange-600">
+                                    {getCategoryIcon(item.category)}
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex-1">
+                            <p className="font-bold text-gray-800 text-sm line-clamp-2">{item.name}</p>
+                            <div className="text-xs text-gray-400 mt-1">{item.category}</div>
+                        </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                        <span className="font-bold text-orange-500">S/ {item.price.toFixed(2)}</span>
+                        <button onClick={onRemove} className="text-gray-300 hover:text-red-500 p-1 rounded"> <Trash2 size={16} /> </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div

@@ -130,6 +130,7 @@ function DraggableDish({ item, onAdd }: { item: MenuItem, onAdd: () => void }) {
             style={style}
             {...listeners}
             {...attributes}
+            onClick={() => { if (!isDragging) onAdd(); }}
             className={cn(
                 "group relative p-3 bg-white rounded-xl border border-gray-100 shadow-sm cursor-grab active:cursor-grabbing transition-all hover:shadow-md hover:border-orange-200 touch-none", // Added touch-none to prevent scroll interference
                 isDragging ? "opacity-30 grayscale" : "hover:-translate-y-0.5"
@@ -173,7 +174,7 @@ function DraggableDish({ item, onAdd }: { item: MenuItem, onAdd: () => void }) {
     );
 }
 
-function getCategoryIcon(category: string) {
+export function getCategoryIcon(category: string) {
     const c = category.toLowerCase();
     if (c.includes("pollo") || c.includes("brasa")) return <Flame size={18} />;
     if (c.includes("parrilla")) return <Utensils size={18} />;

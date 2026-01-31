@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
-import { Bell, User, Settings, LogOut, CheckCircle2, Info, AlertTriangle, X } from "lucide-react"
+import { Bell, User, Settings, LogOut, CheckCircle2, Info, AlertTriangle, X, Menu } from "lucide-react"
 import { usePOSStore } from "@/lib/store"
 import { cn } from "@/lib/utils"
 import { useClickOutside } from "@/hooks/useClickOutside" // Importamos el nuevo hook
@@ -20,9 +20,10 @@ const NotificationIcon = ({ type }: { type: string }) => {
 
 interface HeaderProps {
   className?: string
+  onMobileMenuToggle?: () => void
 }
 
-export function Header({ className }: HeaderProps) {
+export function Header({ className, onMobileMenuToggle }: HeaderProps) {
   // Obtenemos más datos y acciones del store
   const { currentUser, notifications, logout, removeNotification, clearAllNotifications } = usePOSStore()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -61,6 +62,17 @@ export function Header({ className }: HeaderProps) {
     >
       {/* --- Lado Izquierdo: Logo y Nombre --- */}
       <div className="flex items-center gap-3">
+        {/* Mobile Menu Button */}
+        {onMobileMenuToggle && (
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onMobileMenuToggle}
+            className="rounded-lg p-2 text-[#A65F33]/80 transition-colors hover:bg-[#FFE0C2] hover:text-[#A65F33] md:hidden"
+          >
+            <Menu size={20} />
+          </motion.button>
+        )}
 
         <h1 className="hidden text-xl font-bold text-[#A65F33] sm:block"></h1> {/* Texto: Marrón Oscuro */}
       </div>

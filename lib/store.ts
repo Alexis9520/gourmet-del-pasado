@@ -116,6 +116,7 @@ interface POSState {
   notifications: Notification[]
   menus: Menu[]
   cashSession: CashSession | null
+  cashSessions: CashSession[]
 
 
 
@@ -153,6 +154,8 @@ interface POSState {
   openRegister: (amount: number, user: string) => void;
   closeRegister: (endAmount: number, notes: string) => void;
   registerSale: (amount: number) => void;
+  // Products Actions
+  fetchProducts: () => Promise<void>;
 }
 
 // Mock data
@@ -256,31 +259,15 @@ export const usePOSStore = create<POSState>()(
     (set, get) => ({
       currentUser: null,
       tables: mockTables,
-      menuItems: mockMenuItems,
+      menuItems: [], // Will be loaded from backend
       kitchenTickets: [],
       notifications: [],
       menus: [], // Initial empty state for menus
       orderHistory: [],
       cashSession: null,
+      cashSessions: [],
 
       login: async (dni, password) => {
-        // 1. Check Mock Users first
-        const mockUser = mockAuthUsers.find(u => u.dni === dni && u.password === password);
-        if (mockUser) {
-          const user = {
-            id: mockUser.id,
-            dni: mockUser.dni,
-            name: mockUser.name,
-            role: mockUser.role as "waiter" | "cashier" | "kitchen" | "admin",
-            site: mockUser.site as Site,
-            token: "mock-token-" + mockUser.id,
-            refreshToken: "mock-refresh-" + mockUser.id,
-            expiresIn: 3600
-          };
-          set({ currentUser: user });
-          return true;
-        }
-
         try {
           const response = await fetch("https://apigourmet.enricer.me/api/v1/auth/login", {
             method: "POST",
@@ -289,18 +276,27 @@ export const usePOSStore = create<POSState>()(
           });
 
           if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Login failed:", response.status, errorText);
             throw new Error("Credenciales inválidas");
           }
 
           const data = await response.json();
 
           let role: "admin" | "waiter" | "cashier" | "kitchen" = "waiter";
-          if (data.rol === "ADMIN_SISTEMA" || data.rol === "ADMINISTRADOR") role = "admin";
+          if (data.rol === "ADMIN_SISTEMA" || data.rol === "ADMIN_SEDE" || data.rol === "ADMINISTRADOR") role = "admin";
           else if (data.rol === "MOZO") role = "waiter";
-          else if (data.rol === "CAJERO") role = "cashier";
-          else if (data.rol === "COCINERO") role = "kitchen";
+          else if (data.rol === "CAJERO" || data.rol === "CAJA") role = "cashier";
+          else if (data.rol === "COCINERO" || data.rol === "COCINA") role = "kitchen";
 
+          // Determine site from sedeNombre
           let site: Site = "restaurante";
+          if (data.sedeNombre) {
+            const sedeName = data.sedeNombre.toLowerCase();
+            if (sedeName.includes("pollería") || sedeName.includes("polleria")) {
+              site = "polleria";
+            }
+          }
 
           const user = {
             id: data.userId,
@@ -319,6 +315,15 @@ export const usePOSStore = create<POSState>()(
           }
 
           set({ currentUser: user });
+          
+          // Fetch products after login
+          try {
+            await get().fetchProducts();
+          } catch (err) {
+            console.error("Error fetching products after login:", err);
+            // Continue even if products fail to load
+          }
+          
           return true;
         } catch (error) {
           console.error("Login Error:", error);
@@ -341,11 +346,25 @@ export const usePOSStore = create<POSState>()(
           }
         }
 
+        // Clear localStorage
         if (typeof window !== 'undefined') {
           localStorage.removeItem('auth_token');
           localStorage.removeItem('refresh_token');
         }
-        set({ currentUser: null });
+
+        // Reset to initial state
+        set({ 
+          currentUser: null,
+          menuItems: [],
+          kitchenTickets: [],
+          notifications: [],
+          cashSession: null
+        });
+
+        // Redirect to login page
+        if (typeof window !== 'undefined') {
+          window.location.href = '/';
+        }
       },
 
       refreshSession: async () => {
@@ -646,12 +665,17 @@ export const usePOSStore = create<POSState>()(
         })),
 
       addNotification: (notification) =>
-        set((state) => ({
-          notifications: [
-            { ...notification, id: Math.random().toString(36).substr(2, 9), timestamp: new Date() },
-            ...state.notifications,
-          ],
-        })),
+        set((state) => {
+          // Evitar notificaciones duplicadas por mensaje+tipo
+          const exists = state.notifications.some(n => n.message === notification.message && n.type === notification.type)
+          if (exists) return state
+          return {
+            notifications: [
+              { ...notification, id: Math.random().toString(36).substr(2, 9), timestamp: new Date() },
+              ...state.notifications,
+            ],
+          }
+        }),
 
       removeNotification: (id) =>
         set((state) => ({
@@ -674,7 +698,7 @@ export const usePOSStore = create<POSState>()(
       })),
 
       // Cash Actions
-      openRegister: (amount, user) => set(() => ({
+      openRegister: (amount, user) => set((state) => ({
         cashSession: {
           id: `session-${Date.now()}`,
           isOpen: true,
@@ -688,15 +712,18 @@ export const usePOSStore = create<POSState>()(
       closeRegister: (endAmount, notes) => set((state) => {
         if (!state.cashSession) return state;
         const expected = state.cashSession.startAmount + state.cashSession.salesTotal;
+        const closed = {
+          ...state.cashSession,
+          isOpen: false,
+          endTime: new Date(),
+          endAmount,
+          difference: endAmount - expected,
+          notes
+        } as CashSession;
+
         return {
-          cashSession: {
-            ...state.cashSession,
-            isOpen: false,
-            endTime: new Date(),
-            endAmount,
-            difference: endAmount - expected,
-            notes
-          }
+          cashSession: null,
+          cashSessions: [...(state.cashSessions || []), closed]
         };
       }),
 
@@ -704,8 +731,93 @@ export const usePOSStore = create<POSState>()(
         cashSession: state.cashSession ? {
           ...state.cashSession,
           salesTotal: state.cashSession.salesTotal + amount
-        } : null
+        } : null,
+        // keep history unchanged
       })),
+
+      fetchProducts: async () => {
+        const currentUser = get().currentUser;
+        const token = currentUser?.token;
+        
+        if (!token) {
+          console.warn("fetchProducts: No token available.");
+          throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+        }
+
+        try {
+          const response = await fetch("https://apigourmet.enricer.me/api/v1/productos", {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json"
+            }
+          });
+
+          if (response.status === 403) {
+            console.error("Access forbidden. Token might be expired or invalid.");
+            throw new Error("Acceso denegado. Tu sesión puede haber expirado. Por favor, inicia sesión nuevamente.");
+          }
+
+          if (response.status === 401) {
+            console.error("Unauthorized. User not authenticated.");
+            throw new Error("No autorizado. Por favor, inicia sesión.");
+          }
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Error fetching products: ${response.status} - ${errorText}`);
+            throw new Error(`Error al cargar productos: ${response.status}`);
+          }
+
+          const productos = await response.json();
+
+          const mappedItems: MenuItem[] = productos.map((p: any) => {
+            let sites: Site[] = ["polleria", "restaurante"]; // Default: available on all sites if null
+            if (p.sedeCocinaNombre) {
+              const sedeNombre = p.sedeCocinaNombre.toLowerCase();
+              if (sedeNombre.includes("pollería") || sedeNombre.includes("polleria")) {
+                sites = ["polleria"];
+              } else if (sedeNombre.includes("restaurante") || sedeNombre.includes("sala")) {
+                sites = ["restaurante"];
+              }
+            }
+
+            // Normalize category to Title Case (handling backend UPPERCASE enums)
+            const categoryMap: Record<string, string> = {
+              'POLLOS': 'Pollos a la brasa',
+              'PARRILLAS': 'Parrillas',
+              'CHAUFAS': 'Chaufas',
+              'SEGUNDOS': 'Segundos',
+              'SOPAS': 'Sopas',
+              'LICORES': 'Licores',
+              'GASEOSAS': 'Gaseosas',
+              'REFRESCOS': 'Bebidas',
+              'COMBOS': 'Combos',
+              'MATES': 'Bebidas'
+            };
+
+            const rawCategory = p.categoria || "ELABORADO";
+            const category = categoryMap[rawCategory] || rawCategory.charAt(0).toUpperCase() + rawCategory.slice(1).toLowerCase();
+
+            return {
+              id: p.id,
+              name: p.nombre,
+              category: category,
+              price: p.precioVenta || 0,
+              image: p.imagenUrl || undefined,
+              available: p.activo ?? true,
+              sites: sites
+            };
+          });
+
+          set({ menuItems: mappedItems });
+          console.log(`Fetched ${mappedItems.length} products from API.`);
+        } catch (error) {
+          console.error("Error fetching products:", error);
+          // Re-throw error so the UI can handle it
+          throw error;
+        }
+      },
 
     }),
     {

@@ -12,9 +12,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Settings, Printer, Globe, Database, Moon, Sun, Save, Store, Receipt } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { useState } from "react";
+import WeeklyMenuModal from "@/components/WeeklyMenuModal";
 
 export default function AdminPage() {
   const { currentUser } = usePOSStore();
+
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [isWeeklyModalOpen, setIsWeeklyModalOpen] = useState(false)
+
+  // Mobile sidebar handlers
+  const handleMobileMenuToggle = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
+
+  const handleMobileSidebarClose = () => {
+    setIsMobileSidebarOpen(false);
+  };
 
   // Mock States for Settings
   const [restaurantInfo, setRestaurantInfo] = useState({
@@ -53,9 +66,9 @@ export default function AdminPage() {
 
   return (
     <div className="flex h-screen bg-[#FFF5ED]">
-      <Sidebar />
+      <Sidebar isMobileOpen={isMobileSidebarOpen} onMobileClose={handleMobileSidebarClose} />
       <div className="flex flex-1 flex-col">
-        <Header />
+        <Header onMobileMenuToggle={handleMobileMenuToggle} />
         <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
           <div className="flex items-center gap-3 mb-8">
             <div className="bg-orange-100 p-3 rounded-xl">
@@ -68,6 +81,9 @@ export default function AdminPage() {
           </div>
 
           <Tabs defaultValue="general" className="space-y-6">
+            <div className="mb-4 flex gap-2 justify-end">
+              <Button onClick={() => setIsWeeklyModalOpen(true)} className="bg-[#FFA142] text-white">Gestión de Menús</Button>
+            </div>
             <TabsList className="bg-white border border-[#FFE0C2] p-1 h-auto rounded-xl shadow-sm grid grid-cols-1 md:grid-cols-3 w-full md:w-[600px]">
               <TabsTrigger value="general" className="data-[state=active]:bg-[#FFA142] data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg py-2.5">
                 <Store className="w-4 h-4 mr-2" /> General
@@ -236,6 +252,7 @@ export default function AdminPage() {
             </TabsContent>
           </Tabs>
         </main>
+        <WeeklyMenuModal isOpen={isWeeklyModalOpen} onClose={() => setIsWeeklyModalOpen(false)} />
       </div>
     </div>
   );

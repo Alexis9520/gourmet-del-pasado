@@ -2,7 +2,7 @@
 
 
 
-import { useEffect, useMemo, useRef } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import { useRouter } from "next/navigation"
 
@@ -13,6 +13,7 @@ import useSound from 'use-sound'
 import { usePOSStore, OrderItem } from "@/lib/store"
 
 import { Header } from "@/components/header"
+import { Sidebar } from "@/components/sidebar"
 
 import { KitchenTicketCard } from "@/components/kitchen-ticket-card"
 
@@ -65,10 +66,15 @@ interface KitchenComanda {
 export default function KitchenPage() {
 
   const router = useRouter()
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  // Mobile sidebar handlers
+  const handleMobileMenuToggle = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
 
-  // ✨ Leemos 'tables' en lugar de 'kitchenTickets'
-
-  const { currentUser, tables } = usePOSStore()
+  const handleMobileSidebarClose = () => {
+    setIsMobileSidebarOpen(false);
+  };  const { currentUser, tables } = usePOSStore()
 
 
 
@@ -184,37 +190,23 @@ export default function KitchenPage() {
 
   if (!currentUser) return null
 
+  return (
+    <div className="flex h-screen bg-[#FFF5ED] font-sans">
+      <Sidebar isMobileOpen={isMobileSidebarOpen} onMobileClose={handleMobileSidebarClose} />
 
+      <div className="flex flex-1 flex-col">
+        <Header onMobileMenuToggle={handleMobileMenuToggle} />
 
-  return (
+        <main className="flex flex-1 flex-col overflow-hidden p-4 sm:p-6">
+          <div className="mb-6 shrink-0">
+            <h2 className="text-3xl font-bold text-[#A65F33]">Pedidos en Cocina</h2>
 
-    <div className="flex h-screen bg-[#FFF5ED] font-sans">
-
-      <div className="flex flex-1 flex-col">
-
-        <Header />
-
-        <main className="flex flex-1 flex-col overflow-hidden p-4 sm:p-6">
-
-          <div className="mb-6 shrink-0">
-
-            <h2 className="text-3xl font-bold text-[#A65F33]">Pedidos en Cocina</h2>
-
-            <p className="text-base text-[#A65F33]/70">
-
-              {/* ✨ Actualizamos los textos */}
-
-              {kitchenComandas.length > 0
-
-                ? `${kitchenComandas.length} mesas con pedidos activos.`
-
-                : "Todo está al día. ¡Buen trabajo!"}
-
-            </p>
-
-          </div>
-
-          <div className="flex-1 overflow-x-auto pb-4">
+            <p className="text-base text-[#A65F33]/70">
+              {/* ✨ Actualizamos los textos */}
+              {kitchenComandas.length > 0
+                ? `${kitchenComandas.length} mesas con pedidos activos.`
+                : "Todo está al día. ¡Buen trabajo!"}
+            </p>
 
             <AnimatePresence>
 

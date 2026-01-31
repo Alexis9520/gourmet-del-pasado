@@ -45,6 +45,16 @@ export default function HistoryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+
+  // Mobile sidebar handlers
+  const handleMobileMenuToggle = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
+
+  const handleMobileSidebarClose = () => {
+    setIsMobileSidebarOpen(false);
+  };
 
   useEffect(() => {
     if (!currentUser) router.push("/");
@@ -82,9 +92,9 @@ export default function HistoryPage() {
 
   return (
     <div className="flex h-screen bg-[#FFF5ED]"> {/* Fondo: Crema de Fondo */}
-      <Sidebar />
+      <Sidebar isMobileOpen={isMobileSidebarOpen} onMobileClose={handleMobileSidebarClose} />
       <div className="flex flex-1 flex-col">
-        <Header />
+        <Header onMobileMenuToggle={handleMobileMenuToggle} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <motion.div
             variants={containerVariants}

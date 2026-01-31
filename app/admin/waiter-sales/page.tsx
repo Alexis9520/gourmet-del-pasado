@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react"
 import { usePOSStore } from "@/lib/store"
 import { motion } from "framer-motion"
-import { Search, Calculator, TrendingUp, Users, Award, Calendar } from "lucide-react"
+import { Search, Calculator, TrendingUp, Users, Award, Calendar, Menu } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -14,6 +14,16 @@ export default function WaiterSalesPage() {
     const { orderHistory } = usePOSStore()
     const [searchTerm, setSearchTerm] = useState("")
     const [dateRange, setDateRange] = useState<"today" | "week" | "month" | "all">("all")
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+
+    // Mobile sidebar handlers
+    const handleMobileMenuToggle = () => {
+        setIsMobileSidebarOpen(!isMobileSidebarOpen);
+    };
+
+    const handleMobileSidebarClose = () => {
+        setIsMobileSidebarOpen(false);
+    };
 
     // 1. Filter Data by Date
     const filteredHistory = useMemo(() => {
@@ -86,11 +96,18 @@ export default function WaiterSalesPage() {
 
     return (
         <div className="flex h-screen bg-[#FFF5ED] overflow-hidden">
-            <Sidebar className="z-20 shadow-xl" />
+            <Sidebar className="z-20 shadow-xl" isMobileOpen={isMobileSidebarOpen} onMobileClose={handleMobileSidebarClose} />
 
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Header Section */}
                 <div className="flex items-center justify-between border-b border-[#FFE0C2] bg-white px-8 py-5 shadow-sm z-10">
+                    {/* Mobile Menu Button */}
+                    <button
+                        onClick={handleMobileMenuToggle}
+                        className="md:hidden mr-4 p-2 rounded-lg text-[#A65F33]/80 hover:bg-[#FFE0C2] hover:text-[#A65F33] transition-colors"
+                    >
+                        <Menu className="h-5 w-5" />
+                    </button>
                     <div>
                         <h1 className="text-2xl font-bold text-[#A65F33]">Kardex de Ventas por Mozo</h1>
                         <p className="text-sm text-[#A65F33]/60">Resumen de desempeño y ventas del personal</p>

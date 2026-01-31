@@ -12,6 +12,7 @@ import { PaymentModal } from "@/components/payment-modal"
 import { cn } from "@/lib/utils"
 import type { OrderType } from "@/lib/store"
 import { CashGuard } from "@/components/cash-register/CashGuard"
+import CashHistory from "@/components/cash-register/CashHistory"
 import { CloseRegisterModal } from "@/components/cash-register/CloseRegisterModal"
 
 const PrintStyles = () => (
@@ -178,6 +179,16 @@ export default function CashierPage() {
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [isCloseRegisterOpen, setIsCloseRegisterOpen] = useState(false)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+
+  // Mobile sidebar handlers
+  const handleMobileMenuToggle = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
+
+  const handleMobileSidebarClose = () => {
+    setIsMobileSidebarOpen(false);
+  };
 
   useEffect(() => {
     if (!currentUser) {
@@ -232,10 +243,10 @@ export default function CashierPage() {
     <div className="flex h-screen bg-[#FFF5ED]"> {/* Fondo: Crema de Fondo */}
       <PrintStyles />
       <PrintableTicket selectedTableId={!isPaymentModalOpen ? selectedTableId : null} />
-      <Sidebar />
+      <Sidebar isMobileOpen={isMobileSidebarOpen} onMobileClose={handleMobileSidebarClose} />
 
       <div className="flex flex-1 flex-col">
-        <Header />
+        <Header onMobileMenuToggle={handleMobileMenuToggle} />
 
         <main className="flex flex-1 overflow-hidden">
           <CashGuard>
@@ -256,7 +267,12 @@ export default function CashierPage() {
                 </Button>
               </div>
 
-              <div className="h-[calc(100vh-8rem)] overflow-auto p-3">
+              {/* Caja: estado actual e historial */}
+              <div className="p-3 border-b border-[#FFE0C2]">
+                <CashHistory />
+              </div>
+
+              <div className="h-[calc(100vh-14rem)] overflow-auto p-3">
                 {accountsToSettle.length === 0 ? (
                   <div className="flex h-full items-center justify-center text-center text-sm text-[#A65F33]/60">
                     <span>No hay cuentas abiertas</span>

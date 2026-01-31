@@ -27,7 +27,7 @@ export default function LoginPage() {
       const redirectPath =
         currentUser.role === "kitchen" ? "/kitchen" :
           currentUser.role === "cashier" ? "/cashier" :
-            currentUser.role === "admin" ? "/admin" :
+            currentUser.role === "admin" ? "/dashboard" :
               "/tables";
       router.push(redirectPath);
     }

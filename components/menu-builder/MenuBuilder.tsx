@@ -179,17 +179,12 @@ export function MenuBuilder({ menuId }: { menuId: string | null }) {
             modifiers={[snapCenterToCursor]} // Adds snap center behavior for better cursor alignment
         >
             <div className="flex flex-col lg:flex-row gap-6 h-[calc(100vh-200px)]">
-                {/* Source Panel (Left) */}
-                <div className="w-full lg:w-1/2 min-w-[300px]">
-                    <DishSource menuItems={menuItems} onAddItem={handleAddItem} />
-                </div>
-
-                {/* Target Panel (Right) */}
-                <div className="flex-1 w-full lg:w-1/2 flex flex-col gap-4">
+                {/* Target Panel (Center) */}
+                <div className="flex-1 w-full lg:w-1/2 flex flex-col gap-4 items-center">
 
                     {/* Day Tabs for Weekly Menu */}
                     {isWeekly && (
-                        <div className="flex overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide gap-2">
+                        <div className="flex overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide gap-2 w-full max-w-3xl">
                             {DAYS_OF_WEEK.map(day => (
                                 <button
                                     key={day.id}
@@ -208,7 +203,7 @@ export function MenuBuilder({ menuId }: { menuId: string | null }) {
                         </div>
                     )}
 
-                    <div className="flex-1 overflow-hidden relative">
+                    <div className="flex-1 overflow-hidden relative w-full flex justify-center">
                         {/* Visual overlay for current day context */}
                         {isWeekly && (
                             <div className="absolute top-2 right-4 z-10 opacity-10 pointer-events-none">
@@ -218,14 +213,21 @@ export function MenuBuilder({ menuId }: { menuId: string | null }) {
                             </div>
                         )}
 
-                        <MenuTarget
-                            menu={currentMenu}
-                            menuDishes={menuDishes}
-                            isPlaceholder={!menuId}
-                            onRemoveItem={handleRemoveItem}
-                            onSave={handleSave}
-                        />
+                        <div className="w-full max-w-3xl">
+                            <MenuTarget
+                                menu={currentMenu}
+                                menuDishes={menuDishes}
+                                isPlaceholder={!menuId}
+                                onRemoveItem={handleRemoveItem}
+                                onSave={handleSave}
+                            />
+                        </div>
                     </div>
+                </div>
+
+                {/* Source Panel (Right - Catalog) */}
+                <div className="w-full lg:w-1/3 min-w-[260px]">
+                    <DishSource menuItems={menuItems} onAddItem={handleAddItem} />
                 </div>
             </div>
 

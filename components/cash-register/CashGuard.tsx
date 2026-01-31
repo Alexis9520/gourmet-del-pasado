@@ -28,7 +28,7 @@ export function CashGuard({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <div className="flex items-center justify-center min-h-[500px] h-full bg-[#FFF5ED] p-6">
+        <div className="flex items-center justify-center min-h-screen w-full p-6">
             <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}

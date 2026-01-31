@@ -115,10 +115,10 @@ export function TableCard({ table, onClick }: { table: Table; onClick: () => voi
             whileTap={{ scale: 0.98, y: 0 }}
             transition={{ type: "spring", stiffness: 350, damping: 15 }}
             layout
-            className={cn(
-                "group relative flex h-44 w-40 flex-col justify-between overflow-hidden rounded-2xl p-4 font-sans shadow-lg outline-none transition-shadow duration-300 hover:shadow-xl",
-                config.style
-            )}
+                className={cn(
+                    "group relative flex h-44 w-full sm:w-40 md:w-40 flex-col justify-between overflow-hidden rounded-2xl p-4 font-sans shadow-lg outline-none transition-shadow duration-300 hover:shadow-xl",
+                    config.style
+                )}
         >
             {/* Indicador de pulso para estados de alta prioridad */}
             {config.pulse && (

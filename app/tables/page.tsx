@@ -6,13 +6,23 @@ import { useRouter } from "next/navigation"
 import { usePOSStore } from "@/lib/store"
 import { Sidebar } from "@/components/sidebar"
 import { Header } from "@/components/header"
-import { TableCard } from "@/components/table-card"
+import { RestaurantTableGrid } from "@/components/RestaurantTableGrid"
 import { OrderModal } from "@/components/order-modal"
 
 export default function TablesPage() {
     const router = useRouter()
     const { currentUser, tables } = usePOSStore()
     const [selectedTableId, setSelectedTableId] = useState<string | null>(null)
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+
+    // Mobile sidebar handlers
+    const handleMobileMenuToggle = () => {
+        setIsMobileSidebarOpen(!isMobileSidebarOpen);
+    };
+
+    const handleMobileSidebarClose = () => {
+        setIsMobileSidebarOpen(false);
+    };
 
     useEffect(() => {
         if (!currentUser) {
@@ -24,43 +34,30 @@ export default function TablesPage() {
 
     const selectedTable = tables.find((t) => t.id === selectedTableId)
 
-    // ✨ Array de configuración para generar la leyenda dinámicamente
-    const legendItems = [
-        { label: "Libre", color: "bg-[#7DBB3C]" },
-        { label: "Atendida", color: "bg-[#FFF3E5] border-2 border-[#FFE0C2]" },
-        { label: "Atención Requerida", color: "bg-[#FFA142]" },
-        { label: "Listo para Servir", color: "bg-blue-500" },
-        { label: "Reservada", color: "bg-[#FF7043]" },
-        { label: "Pago Pendiente", color: "bg-yellow-500" },
-    ];
+    // Transformar las mesas del store al formato del nuevo componente
+    const tableGridData = tables.map(table => {
+        // Mapear el estado de ocupación a las 6 sillas
+        // Si la mesa está ocupada, todas las sillas están ocupadas
+        // Si está libre, todas disponibles
+        const isOccupied = table.status === "ocupado" || table.status === "reservado" || table.status === "pago pendiente"
+        const seatStatus = isOccupied ? "occupied" : "available"
+        
+        return {
+            id: table.id,
+            number: table.number,
+            seats: Array(6).fill(seatStatus) as ("available" | "occupied")[],
+            onClick: () => setSelectedTableId(table.id)
+        }
+    })
 
     return (
         <div className="flex h-screen bg-[#FFF5ED] font-sans">
             <Toaster position="top-center" reverseOrder={false} />
-            <Sidebar />
+            <Sidebar isMobileOpen={isMobileSidebarOpen} onMobileClose={handleMobileSidebarClose} />
             <div className="flex flex-1 flex-col">
-                <Header />
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
-                    <div className="mb-6">
-                        <h2 className="text-2xl sm:text-3xl font-bold text-[#A65F33]">Mapa de Mesas</h2>
-                        <p className="text-[#A65F33]/80">Selecciona una mesa para gestionar su pedido.</p>
-                    </div>
-
-                    {/* ✨ Leyenda de estados generada dinámicamente */}
-                    <div className="flex flex-wrap gap-x-4 gap-y-2 mb-8 text-sm font-semibold text-[#A65F33]">
-                        {legendItems.map(item => (
-                            <div key={item.label} className="flex items-center gap-2">
-                                <span className={`w-4 h-4 rounded-full ${item.color}`}></span>
-                                <span>{item.label}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 pb-8">
-                        {tables.map((table) => (
-                            <TableCard key={table.id} table={table} onClick={() => setSelectedTableId(table.id)} />
-                        ))}
-                    </div>
+                <Header onMobileMenuToggle={handleMobileMenuToggle} />
+                <main className="flex-1 overflow-y-auto">
+                    <RestaurantTableGrid tables={tableGridData} />
                 </main>
             </div>
 
