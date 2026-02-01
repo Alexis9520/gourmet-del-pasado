@@ -269,7 +269,7 @@ export const usePOSStore = create<POSState>()(
 
       login: async (dni, password) => {
         try {
-          const response = await fetch("https://apigourmet.enricer.me/api/v1/auth/login", {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ dni, password }),
@@ -335,7 +335,7 @@ export const usePOSStore = create<POSState>()(
         const currentUser = get().currentUser;
         if (currentUser?.token) {
           try {
-            await fetch("https://apigourmet.enricer.me/api/v1/auth/logout", {
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
               method: "POST",
               headers: {
                 "Authorization": `Bearer ${currentUser.token}`
@@ -372,7 +372,7 @@ export const usePOSStore = create<POSState>()(
         if (!currentUser?.refreshToken) return false;
 
         try {
-          const response = await fetch("https://apigourmet.enricer.me/api/v1/auth/refresh", {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ refreshToken: currentUser.refreshToken })
@@ -745,7 +745,7 @@ export const usePOSStore = create<POSState>()(
         }
 
         try {
-          const response = await fetch("https://apigourmet.enricer.me/api/v1/productos", {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/productos`, {
             method: "GET",
             headers: {
               "Authorization": `Bearer ${token}`,
