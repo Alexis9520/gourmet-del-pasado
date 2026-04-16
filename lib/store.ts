@@ -269,11 +269,82 @@ export const usePOSStore = create<POSState>()(
 
       login: async (dni, password) => {
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+          // 🎯 Try backend first
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+          
+          // If no API URL configured, use mock directly
+          if (!apiUrl) {
+            console.log("⚠️ No API URL configured, using mock authentication");
+            const mockUser = mockAuthUsers.find((u) => u.dni === dni && u.password === password);
+            
+            if (!mockUser) {
+              console.error("Mock login failed: Invalid credentials");
+              return false;
+            }
+
+            const mockToken = `mock-token-${mockUser.id}-${Date.now()}`;
+            const mockRefreshToken = `mock-refresh-${mockUser.id}-${Date.now()}`;
+
+            const user = {
+              id: mockUser.id,
+              dni: mockUser.dni,
+              name: mockUser.name,
+              role: mockUser.role as "admin" | "waiter" | "cashier" | "kitchen",
+              site: mockUser.site as Site,
+              token: mockToken,
+              refreshToken: mockRefreshToken,
+              expiresIn: 3600
+            };
+
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('auth_token', mockToken);
+              localStorage.setItem('refresh_token', mockRefreshToken);
+            }
+
+            set({ currentUser: user, menuItems: mockMenuItems });
+            console.log(`✅ Mock login successful: ${user.name} (${user.role})`);
+            return true;
+          }
+
+          const response = await fetch(`${apiUrl}/auth/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ dni, password }),
           });
+
+          // 🎯 Fallback to mock on 404 (backend not available)
+          if (response.status === 404) {
+            console.log("⚠️ Backend not available (404), using mock authentication");
+            const mockUser = mockAuthUsers.find((u) => u.dni === dni && u.password === password);
+            
+            if (!mockUser) {
+              console.error("Mock login failed: Invalid credentials");
+              return false;
+            }
+
+            const mockToken = `mock-token-${mockUser.id}-${Date.now()}`;
+            const mockRefreshToken = `mock-refresh-${mockUser.id}-${Date.now()}`;
+
+            const user = {
+              id: mockUser.id,
+              dni: mockUser.dni,
+              name: mockUser.name,
+              role: mockUser.role as "admin" | "waiter" | "cashier" | "kitchen",
+              site: mockUser.site as Site,
+              token: mockToken,
+              refreshToken: mockRefreshToken,
+              expiresIn: 3600
+            };
+
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('auth_token', mockToken);
+              localStorage.setItem('refresh_token', mockRefreshToken);
+            }
+
+            set({ currentUser: user, menuItems: mockMenuItems });
+            console.log(`✅ Mock login successful: ${user.name} (${user.role})`);
+            return true;
+          }
 
           if (!response.ok) {
             const errorText = await response.text();
@@ -327,6 +398,36 @@ export const usePOSStore = create<POSState>()(
           return true;
         } catch (error) {
           console.error("Login Error:", error);
+          
+          // 🎯 Fallback to mock on network error
+          const mockUser = mockAuthUsers.find((u) => u.dni === dni && u.password === password);
+          if (mockUser) {
+            console.log("⚠️ Network error, using mock authentication");
+            
+            const mockToken = `mock-token-${mockUser.id}-${Date.now()}`;
+            const mockRefreshToken = `mock-refresh-${mockUser.id}-${Date.now()}`;
+
+            const user = {
+              id: mockUser.id,
+              dni: mockUser.dni,
+              name: mockUser.name,
+              role: mockUser.role as "admin" | "waiter" | "cashier" | "kitchen",
+              site: mockUser.site as Site,
+              token: mockToken,
+              refreshToken: mockRefreshToken,
+              expiresIn: 3600
+            };
+
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('auth_token', mockToken);
+              localStorage.setItem('refresh_token', mockRefreshToken);
+            }
+
+            set({ currentUser: user, menuItems: mockMenuItems });
+            console.log(`✅ Mock login successful: ${user.name} (${user.role})`);
+            return true;
+          }
+          
           return false;
         }
       },
