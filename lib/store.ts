@@ -269,60 +269,41 @@ export const usePOSStore = create<POSState>()(
 
       login: async (dni, password) => {
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ dni, password }),
-          });
+          // 🎯 MOCK MODE: Buscar en mockAuthUsers (sin backend)
+          const mockUser = mockAuthUsers.find(
+            (u) => u.dni === dni && u.password === password
+          );
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Login failed:", response.status, errorText);
+          if (!mockUser) {
+            console.error("Login failed: Credenciales inválidas (mock)");
             throw new Error("Credenciales inválidas");
           }
 
-          const data = await response.json();
-
-          let role: "admin" | "waiter" | "cashier" | "kitchen" = "waiter";
-          if (data.rol === "ADMIN_SISTEMA" || data.rol === "ADMIN_SEDE" || data.rol === "ADMINISTRADOR") role = "admin";
-          else if (data.rol === "MOZO") role = "waiter";
-          else if (data.rol === "CAJERO" || data.rol === "CAJA") role = "cashier";
-          else if (data.rol === "COCINERO" || data.rol === "COCINA") role = "kitchen";
-
-          // Determine site from sedeNombre
-          let site: Site = "restaurante";
-          if (data.sedeNombre) {
-            const sedeName = data.sedeNombre.toLowerCase();
-            if (sedeName.includes("pollería") || sedeName.includes("polleria")) {
-              site = "polleria";
-            }
-          }
+          // Generar tokens mock
+          const mockToken = `mock-token-${mockUser.id}-${Date.now()}`;
+          const mockRefreshToken = `mock-refresh-${mockUser.id}-${Date.now()}`;
 
           const user = {
-            id: data.userId,
-            dni: data.dni,
-            name: data.nombreCompleto || data.username,
-            role: role,
-            site: site,
-            token: data.token,
-            refreshToken: data.refreshToken,
-            expiresIn: data.expiresIn
+            id: mockUser.id,
+            dni: mockUser.dni,
+            name: mockUser.name,
+            role: mockUser.role as "admin" | "waiter" | "cashier" | "kitchen",
+            site: mockUser.site as Site,
+            token: mockToken,
+            refreshToken: mockRefreshToken,
+            expiresIn: 3600 // 1 hora mock
           };
 
           if (typeof window !== 'undefined') {
-            localStorage.setItem('auth_token', data.token);
-            localStorage.setItem('refresh_token', data.refreshToken);
+            localStorage.setItem('auth_token', mockToken);
+            localStorage.setItem('refresh_token', mockRefreshToken);
           }
 
           set({ currentUser: user });
           
-          // Fetch products after login
-          try {
-            await get().fetchProducts();
-          } catch (err) {
-            console.error("Error fetching products after login:", err);
-            // Continue even if products fail to load
-          }
+          // 🎯 MOCK MODE: Usar mockMenuItems directamente
+          set({ menuItems: mockMenuItems });
+          console.log(`✅ Login mock exitoso: ${user.name} (${user.role})`);
           
           return true;
         } catch (error) {
@@ -332,19 +313,8 @@ export const usePOSStore = create<POSState>()(
       },
 
       logout: async () => {
-        const currentUser = get().currentUser;
-        if (currentUser?.token) {
-          try {
-            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${currentUser.token}`
-              }
-            });
-          } catch (error) {
-            console.error("Error al cerrar sesión en backend:", error);
-          }
-        }
+        // 🎯 MOCK MODE: Logout local (sin backend)
+        console.log("✅ Logout mock: Sesión cerrada");
 
         // Clear localStorage
         if (typeof window !== 'undefined') {
@@ -368,40 +338,29 @@ export const usePOSStore = create<POSState>()(
       },
 
       refreshSession: async () => {
+        // 🎯 MOCK MODE: Refresh local (simula renovación de token)
         const currentUser = get().currentUser;
-        if (!currentUser?.refreshToken) return false;
+        if (!currentUser) return false;
 
-        try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refreshToken: currentUser.refreshToken })
-          });
+        const newToken = `mock-token-refreshed-${currentUser.id}-${Date.now()}`;
+        const newRefreshToken = `mock-refresh-refreshed-${currentUser.id}-${Date.now()}`;
 
-          if (!response.ok) throw new Error("Refresh failed");
-
-          const data = await response.json();
-
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('auth_token', data.token);
-            localStorage.setItem('refresh_token', data.refreshToken);
-          }
-
-          set((state) => ({
-            currentUser: state.currentUser ? {
-              ...state.currentUser,
-              token: data.token,
-              refreshToken: data.refreshToken,
-              expiresIn: data.expiresIn
-            } : null
-          }));
-          return true;
-
-        } catch (error) {
-          console.error("Session refresh error:", error);
-          get().logout();
-          return false;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('auth_token', newToken);
+          localStorage.setItem('refresh_token', newRefreshToken);
         }
+
+        set((state) => ({
+          currentUser: state.currentUser ? {
+            ...state.currentUser,
+            token: newToken,
+            refreshToken: newRefreshToken,
+            expiresIn: 3600
+          } : null
+        }));
+
+        console.log("✅ Session refreshed (mock)");
+        return true;
       },
 
       updateTableNotes: (tableId, notes) =>
@@ -736,86 +695,21 @@ export const usePOSStore = create<POSState>()(
       })),
 
       fetchProducts: async () => {
+        // 🎯 MOCK MODE: Usar mockMenuItems directamente (sin backend)
         const currentUser = get().currentUser;
-        const token = currentUser?.token;
         
-        if (!token) {
-          console.warn("fetchProducts: No token available.");
-          throw new Error("No hay sesión activa. Por favor, inicia sesión nuevamente.");
+        if (!currentUser) {
+          console.warn("fetchProducts: No hay usuario logueado.");
+          throw new Error("No hay sesión activa.");
         }
 
-        try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/productos`, {
-            method: "GET",
-            headers: {
-              "Authorization": `Bearer ${token}`,
-              "Content-Type": "application/json"
-            }
-          });
-
-          if (response.status === 403) {
-            console.error("Access forbidden. Token might be expired or invalid.");
-            throw new Error("Acceso denegado. Tu sesión puede haber expirado. Por favor, inicia sesión nuevamente.");
-          }
-
-          if (response.status === 401) {
-            console.error("Unauthorized. User not authenticated.");
-            throw new Error("No autorizado. Por favor, inicia sesión.");
-          }
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`Error fetching products: ${response.status} - ${errorText}`);
-            throw new Error(`Error al cargar productos: ${response.status}`);
-          }
-
-          const productos = await response.json();
-
-          const mappedItems: MenuItem[] = productos.map((p: any) => {
-            let sites: Site[] = ["polleria", "restaurante"]; // Default: available on all sites if null
-            if (p.sedeCocinaNombre) {
-              const sedeNombre = p.sedeCocinaNombre.toLowerCase();
-              if (sedeNombre.includes("pollería") || sedeNombre.includes("polleria")) {
-                sites = ["polleria"];
-              } else if (sedeNombre.includes("restaurante") || sedeNombre.includes("sala")) {
-                sites = ["restaurante"];
-              }
-            }
-
-            // Normalize category to Title Case (handling backend UPPERCASE enums)
-            const categoryMap: Record<string, string> = {
-              'POLLOS': 'Pollos a la brasa',
-              'PARRILLAS': 'Parrillas',
-              'CHAUFAS': 'Chaufas',
-              'SEGUNDOS': 'Segundos',
-              'SOPAS': 'Sopas',
-              'LICORES': 'Licores',
-              'GASEOSAS': 'Gaseosas',
-              'REFRESCOS': 'Bebidas',
-              'COMBOS': 'Combos',
-              'MATES': 'Bebidas'
-            };
-
-            const rawCategory = p.categoria || "ELABORADO";
-            const category = categoryMap[rawCategory] || rawCategory.charAt(0).toUpperCase() + rawCategory.slice(1).toLowerCase();
-
-            return {
-              id: p.id,
-              name: p.nombre,
-              category: category,
-              price: p.precioVenta || 0,
-              image: p.imagenUrl || undefined,
-              available: p.activo ?? true,
-              sites: sites
-            };
-          });
-
-          set({ menuItems: mappedItems });
-          console.log(`Fetched ${mappedItems.length} products from API.`);
-        } catch (error) {
-          console.error("Error fetching products:", error);
-          // Re-throw error so the UI can handle it
-          throw error;
+        // Ya están cargados en el login, pero si alguien llama esto manualmente:
+        const currentItems = get().menuItems;
+        if (currentItems.length === 0) {
+          set({ menuItems: mockMenuItems });
+          console.log(`✅ Products loaded from mock: ${mockMenuItems.length} items`);
+        } else {
+          console.log(`✅ Products already loaded: ${currentItems.length} items`);
         }
       },
 
